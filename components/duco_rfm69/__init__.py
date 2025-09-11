@@ -6,7 +6,7 @@ from esphome.const import CONF_ID
 DEPENDENCIES = ["spi"]
 
 duco_rfm69_ns = cg.esphome_ns.namespace("duco_rfm69")
-DucoRFM69 = duco_rfm_ns.class_(
+DucoRFM69 = duco_rfm69s_ns.class_(
     "DucoRFM69", cg.Component, spi.SPIDevice
 )
 
