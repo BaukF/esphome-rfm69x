@@ -6,6 +6,11 @@ namespace duco_rfm69 {
 
 static const char *TAG = "duco_rfm69.component";
 
+// Constructor implementation
+DucoRFM69::DucoRFM69() {
+  ESP_LOGI("duco_rfm69", "Constructor called!");
+}
+
 void DucoRFM69::setup() {
   ESP_LOGI("duco_rfm69", "setup() called!");
   this->spi_setup();
