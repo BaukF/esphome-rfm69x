@@ -6,14 +6,14 @@ from esphome.const import CONF_ID
 DEPENDENCIES = ["spi"]
 
 empty_spi_component_ns = cg.esphome_ns.namespace("duco_rfm69")
-DucoRFM69Compnent = empty_spi_component_ns.class_(
+DucoRFM69 = empty_spi_component_ns.class_(
     "DucoRFM69", cg.Component, spi.SPIDevice
 )
 
 CONFIG_SCHEMA = (
     cv.Schema(
         {
-            cv.GenerateID(): cv.declare_id(DucoRFM69Compnent),
+            cv.GenerateID(): cv.declare_id(DucoRFM69),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
