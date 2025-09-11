@@ -25,7 +25,7 @@ void DucoRFM69::setup() {
   uint8_t version = this->read_byte();      // Read the version byte
   this->disable();                          // Deselect the chip
 
-  ESP_LOGD(TAG, "RFM69 Version Register: 0x%02X", version);
+  ESP_LOGI(TAG, "RFM69 Version Register: 0x%02X", version);
 
   if (version == 0x24) { // 0x24 is expected for RFM69
     ESP_LOGI(TAG, "RFM69 module detected!");
