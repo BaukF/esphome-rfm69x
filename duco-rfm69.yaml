@@ -1,0 +1,67 @@
+esphome:
+  name: slimmeducobridge
+  friendly_name: slimme duco bridge
+  comment: Fully DIY ESP32 Duco RF Gateway
+  # This is a key line: we register our component as a sensor platform here.
+  # This tells ESPHome to look for the "duco_rfm69" platform.
+  #platformio_options:
+  #  lib_deps:
+  #    - jgromes/RadioLib@^6.2.0
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+  baud_rate: 0
+
+# Enable Home Assistant API
+api:
+  encryption: 
+    key: !secret api_encryption
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+wifi:
+  networks:
+    - ssid: !secret iot_ssid
+      password: !secret iot_password
+      
+  # Enable fallback hotspot (no captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name}
+    password: !secret ota_password
+    ap_timeout: 15s
+
+esp32_ble_tracker:
+bluetooth_proxy:
+
+web_server:
+  port: 80
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+captive_portal:
+
+# Here we define the existence of a custom component we developed
+external_components:
+  - source: github://BaukF/esphome-duco-rfm69
+    components: [duco_rfm69]
+    refresh: always
+
+
+# Define the SPI bus for the RFM69W
+spi:
+  clk_pin: GPIO18
+  miso_pin: GPIO19
+
+duco_rfm69:
+  id: duco_rfm69_component
+  cs_pin: GPIO5
+
