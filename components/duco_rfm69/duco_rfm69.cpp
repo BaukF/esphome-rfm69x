@@ -7,23 +7,21 @@ namespace duco_rfm69 {
 static const char *TAG = "duco_rfm69.component";
 
 void DucoRFM69::setup() {
-  // SPI device initialization is typically done here.
-  // Note that a number of read/write methods are available in the SPIDevice
-  // class. See "spi/spi.h" for details.
-  this->spi_setup(); // Required to initialize this SPI device
+  this->spi_setup();
 
-  this->enable();
-  uint8_t initialize_cmd = 0x12; // Example command to initialize the device
-  this->write_byte(initialize_cmd);
+  // Read version register (address 0x10)
+  this->enable();                           // Select the chip
+  this->write_byte(0x10 & 0x7F);            // Send address with MSB=0 for read
+  uint8_t version = this->read_byte();      // Read the version byte
+  this->disable();                          // Deselect the chip
 
-  uint8_t response = this->read_byte(); // Read the response from the device
-  this->disable();
+  ESP_LOGD(TAG, "RFM69 Version Register: 0x%02X", version);
 
-  if (response != 0) { // Example check for a specific response
-    ESP_LOGE(TAG, "Initialization failed; response: %d", response);
-    this->mark_failed(); // Mark the component as failed if the response is not
-                         // as expected
-    return;
+  if (version == 0x24) { // 0x24 is expected for RFM69
+    ESP_LOGI(TAG, "RFM69 module detected!");
+  } else {
+    ESP_LOGE(TAG, "Unexpected RFM69 version: 0x%02X", version);
+    this->mark_failed();
   }
 }
 
