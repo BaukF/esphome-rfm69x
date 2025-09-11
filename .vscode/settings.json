@@ -1,0 +1,4 @@
+{
+    "esphome.dashboardUri": "http://172.16.20.20:6052",
+    "esphome.validator": "dashboard"
+}
