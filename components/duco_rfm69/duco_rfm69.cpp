@@ -12,16 +12,12 @@ DucoRFM69::DucoRFM69() {
 }
 
 void DucoRFM69::setup() {
-  ESP_LOGI("duco_rfm69", "setup() called!");
   this->spi_setup();
   
-  ESP_LOGI("duco_rfm69", "spi_setup() called!");
   // Read version register (address 0x10)
   this->enable();                           // Select the chip
-  ESP_LOGI("duco_rfm69", "module enabled, continuing to write!");
   this->write_byte(0x10 & 0x7F);            // Send address with MSB=0 for read
 
-  ESP_LOGI("duco_rfm69", "Write_byte done. Let's see what comes back.");
   uint8_t version = this->read_byte();      // Read the version byte
   this->disable();                          // Deselect the chip
 
@@ -40,7 +36,16 @@ void DucoRFM69::loop() {
 }
 
 void DucoRFM69::dump_config() {
-  ESP_LOGCONFIG(TAG, "Unconfigured DucoRFM69 Component");
+  ESP_LOGCONFIG(TAG, "DucoRFM69:");
+  LOG_PIN("  CS Pin: ", this->cs_);
+
+  if (this->version_ == 0x24) {
+    ESP_LOGCONFIG(TAG, "  Detected RFM69, Version: 0x%02X", this->version_);
+  } else {
+    ESP_LOGE(TAG, "  RFM69 not detected, read 0x%02X", this->version_);
+  }
+
+  this->spi_teardown();
 }
 
 } // namespace duco_rfm69
