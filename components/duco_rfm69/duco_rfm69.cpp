@@ -14,11 +14,7 @@ DucoRFM69::DucoRFM69() {
 void DucoRFM69::setup() {
    // Do not log here — just mark init needed
   this->needs_init_ = true;
-<<<<<<< HEAD
 }
-=======
-}`
->>>>>>> f0a383e183e7f05dea14e2a39b6030cc09bbbf28
 
 void DucoRFM69::loop() {
   ESP_LOGI("duco_rfm69", "loop() called!");
