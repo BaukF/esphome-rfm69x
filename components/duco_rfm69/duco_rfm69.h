@@ -20,7 +20,7 @@ class DucoRFM69 : public Component,
 
   protected:
       uint8_t version_{0};   // Store the version register value
-
+      bool detected_{false};
 };
 
 

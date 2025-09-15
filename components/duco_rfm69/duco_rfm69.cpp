@@ -11,23 +11,22 @@ DucoRFM69::DucoRFM69() {
   ESP_LOGI("duco_rfm69", "Constructor called!");
 }
 
-void DucoRFM69::setup() {
-  this->spi_setup();
-  
-  // Read version register (address 0x10)
-  this->enable();                           // Select the chip
-  this->write_byte(0x10 & 0x7F);            // Send address with MSB=0 for read
+void DucoRFM69::loop() {
+  if (!this->detected_) {
+    uint8_t resp = 0;
+    this->spi_setup();
+    this->enable();
+    resp = this->transfer_byte(0x10);  // probe register
+    this->disable();
 
-  uint8_t version = this->read_byte();      // Read the version byte
-  this->disable();                          // Deselect the chip
+    this->version_ = resp;
+    this->detected_ = (resp == 0x24);
 
-  ESP_LOGI(TAG, "RFM69 Version Register: 0x%02X", version);
-
-  if (version == 0x24) { // 0x24 is expected for RFM69
-    ESP_LOGI(TAG, "RFM69 module detected!");
-  } else {
-    ESP_LOGE(TAG, "Unexpected RFM69 version: 0x%02X", version);
-    this->mark_failed();
+    if (this->detected_) {
+      ESP_LOGI(TAG, "RFM69 detected, version=0x%02X", this->version_);
+    } else {
+      ESP_LOGE(TAG, "RFM69 probe failed, got 0x%02X", this->version_);
+    }
   }
 }
 
@@ -39,13 +38,11 @@ void DucoRFM69::dump_config() {
   ESP_LOGCONFIG(TAG, "DucoRFM69:");
   LOG_PIN("  CS Pin: ", this->cs_);
 
-  if (this->version_ == 0x24) {
-    ESP_LOGCONFIG(TAG, "  Detected RFM69, Version: 0x%02X", this->version_);
+  if (this->detected_) {
+    ESP_LOGCONFIG(TAG, "  RFM69 detected, version=0x%02X", this->version_);
   } else {
-    ESP_LOGE(TAG, "  RFM69 not detected, read 0x%02X", this->version_);
+    ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
   }
-
-  this->spi_teardown();
 }
 
 } // namespace duco_rfm69
