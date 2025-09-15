@@ -17,16 +17,12 @@ void DucoRFM69::setup() {
 }
 
 void DucoRFM69::loop() {
-  ESP_LOGI("duco_rfm69", "loop() called!");
   this->spi_setup();
-  
   ESP_LOGI("duco_rfm69", "spi_setup() called!");
   // Read version register (address 0x10)
   this->enable();                           // Select the chip
-  ESP_LOGI("duco_rfm69", "module enabled, continuing to write!");
   this->write_byte(0x10 & 0x7F);            // Send address with MSB=0 for read
 
-  ESP_LOGI("duco_rfm69", "Write_byte done. Let's see what comes back.");
   uint8_t version = this->read_byte();      // Read the version byte
   this->disable();                          // Deselect the chip
 
