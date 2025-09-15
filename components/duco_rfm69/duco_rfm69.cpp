@@ -12,7 +12,12 @@ DucoRFM69::DucoRFM69() {
 }
 
 void DucoRFM69::setup() {
-  ESP_LOGI("duco_rfm69", "setup() called!");
+   // Do not log here — just mark init needed
+  this->needs_init_ = true;
+}
+
+void DucoRFM69::loop() {
+  ESP_LOGI("duco_rfm69", "loop() called!");
   this->spi_setup();
   
   ESP_LOGI("duco_rfm69", "spi_setup() called!");
@@ -33,10 +38,6 @@ void DucoRFM69::setup() {
     ESP_LOGE(TAG, "Unexpected RFM69 version: 0x%02X", version);
     this->mark_failed();
   }
-}
-
-void DucoRFM69::loop() {
-
 }
 
 void DucoRFM69::dump_config() {
