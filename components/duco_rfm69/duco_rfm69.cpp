@@ -9,8 +9,15 @@ static const char *TAG = "duco_rfm69";
 void DucoRFM69::setup() {
   ESP_LOGD(TAG, "Running setup for RFM69...");
 
+  // Lets create some breathing room for the RFM69 to power up
+  delay(100);
+
   // Example probe: read version register
   this->spi_setup();
+  // Additional delay after SPI init
+  delay(50);   // Allow SPI to settle
+  
+  
   this->enable();
   this->version_ = this->transfer_byte(0x10);  // 0x10 = RFM69 version register
   this->disable();
