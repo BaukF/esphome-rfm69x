@@ -4,34 +4,28 @@
 namespace esphome {
 namespace duco_rfm69 {
 
-static const char *TAG = "duco_rfm69.component";
+static const char *TAG = "duco_rfm69";
 
-// Constructor implementation
-DucoRFM69::DucoRFM69() {
-  ESP_LOGI("duco_rfm69", "Constructor called!");
-}
+void DucoRFM69::setup() {
+  ESP_LOGD(TAG, "Running setup for RFM69...");
 
-void DucoRFM69::loop() {
-  if (!this->detected_) {
-    uint8_t resp = 0;
-    this->spi_setup();
-    this->enable();
-    resp = this->transfer_byte(0x10);  // probe register
-    this->disable();
+  // Example probe: read version register
+  this->spi_setup();
+  this->enable();
+  this->version_ = this->transfer_byte(0x10);  // 0x10 = RFM69 version register
+  this->disable();
 
-    this->version_ = resp;
-    this->detected_ = (resp == 0x24);
-
-    if (this->detected_) {
-      ESP_LOGI(TAG, "RFM69 detected, version=0x%02X", this->version_);
-    } else {
-      ESP_LOGE(TAG, "RFM69 probe failed, got 0x%02X", this->version_);
-    }
+  if (this->version_ == 0x24) {
+    ESP_LOGI(TAG, "RFM69 detected, version=0x%02X", this->version_);
+    this->detected_ = true;
+  } else {
+    ESP_LOGE(TAG, "RFM69 probe failed, got 0x%02X", this->version_);
+    this->detected_ = false;
   }
 }
 
 void DucoRFM69::loop() {
-
+  // Nothing for now. Will be used later for RadioLib integration or polling.
 }
 
 void DucoRFM69::dump_config() {
@@ -45,5 +39,5 @@ void DucoRFM69::dump_config() {
   }
 }
 
-} // namespace duco_rfm69
-} // namespace esphome
+}  // namespace duco_rfm69
+}  // namespace esphome
