@@ -7,33 +7,43 @@ namespace duco_rfm69 {
 static const char *TAG = "duco_rfm69.component";
 
 void DucoRFM69::setup() {
-   // Do not log here — just mark init needed
-  this->needs_init_ = true;
-}
+  ESP_LOGD(TAG, "Running RFM69 setup...");
 
-void DucoRFM69::loop() {
+  // Initialize SPI device
   this->spi_setup();
-  ESP_LOGI("duco_rfm69", "spi_setup() called!");
-  // Read version register (address 0x10)
-  this->enable();                           // Select the chip
-  this->write_byte(0x10 & 0x7F);            // Send address with MSB=0 for read
 
-  uint8_t version = this->read_byte();      // Read the version byte
-  this->disable();                          // Deselect the chip
+  // Read version register (0x10)
+  this->enable();                  // Pull CS low
+  this->write_byte(0x10 & 0x7F);   // Send address (MSB=0 → read)
+  this->version_ = this->read_byte();
+  this->disable();                 // Pull CS high
 
-  ESP_LOGI(TAG, "RFM69 Version Register: 0x%02X", version);
-
-  if (version == 0x24) { // 0x24 is expected for RFM69
-    ESP_LOGI(TAG, "RFM69 module detected!");
+  // Evaluate result
+  if (this->version_ == 0x24) {  // 0x24 = expected RFM69 version
+    ESP_LOGI(TAG, "RFM69 detected, version=0x%02X", this->version_);
+    this->detected_ = true;
   } else {
-    ESP_LOGE(TAG, "Unexpected RFM69 version: 0x%02X", version);
-    this->mark_failed();
+    ESP_LOGE(TAG, "RFM69 probe failed, got 0x%02X", this->version_);
+    this->detected_ = false;
+    this->mark_failed();  // tells ESPHome this component isn’t usable
   }
 }
 
-void DucoRFM69::dump_config() {
-  ESP_LOGCONFIG(TAG, "Unconfigured DucoRFM69 Component");
+void DucoRFM69::loop() {
+  // No continuous work yet.
+  // Later: you’ll poll status or handle RadioLib here.
 }
 
-} // namespace duco_rfm69
-} // namespace esphome
+void DucoRFM69::dump_config() {
+  ESP_LOGCONFIG(TAG, "DucoRFM69:");
+  LOG_PIN("  CS Pin: ", this->cs_);
+
+  if (this->detected_) {
+    ESP_LOGCONFIG(TAG, "  RFM69 detected, version=0x%02X", this->version_);
+  } else {
+    ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
+  }
+}
+
+}  // namespace duco_rfm69
+}  // namespace esphome
