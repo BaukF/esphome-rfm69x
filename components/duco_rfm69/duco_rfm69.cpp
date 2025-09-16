@@ -12,7 +12,7 @@ void DucoRFM69::setup() {
 }
 
 void DucoRFM69::loop() {
-  if (!this->spi_setup()) {
+  if (!this->needs_init_) {
     ESP_LOGE("duco_rfm69", "We're done here!");
     return;
   } 
