@@ -15,7 +15,6 @@ class DucoRFM69 : public Component,
   void setup() override;
   void loop() override;
   void dump_config() override;
-  bool init_rfm69();
 
  protected:
   uint8_t version_{0};   // Store the version register value
