@@ -18,7 +18,8 @@ I have extremely basic programming skills and am using all that is at my disposa
   - [x] Wiring for chip
   - [ ] wiring for serial
 - [x] Get bare minimum SPI component working
-  - [x] Get the SPI bus talking and return value from FRFM
+  - [x] Get the SPI bus talking and return value from FRFM, using loop as delayed log output (v0.1)
+  - [x] Get the module working through the correct setup() function
   - [ ] Consider test and try interactions with chip 
 - [x] Rename and redefine
 - [x] Upload to GIT
