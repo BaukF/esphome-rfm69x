@@ -17,10 +17,7 @@ void DucoRFM69::setup() {
 }
 
 void DucoRFM69::loop() {
- if (!this->needs_init_) {
-    return; // Already initialized
-  }
-  
+ if (this->needs_init_) {
   this->spi_setup();
   ESP_LOGI("duco_rfm69", "spi_setup() called!");
   // Read version register (address 0x10)
@@ -40,6 +37,9 @@ void DucoRFM69::loop() {
   }
 
   this->needs_init_ = false; // Initialization done
+}
+  
+
 }
 
 void DucoRFM69::dump_config() {
