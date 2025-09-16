@@ -6,7 +6,7 @@ namespace duco_rfm69 {
 
 static const char *TAG = "duco_rfm69";
 
-bool init_rfm69()  override {
+bool init_rfm69() {
   const int max_retries = 10;
   const int retry_delay = 50; // ms
   
