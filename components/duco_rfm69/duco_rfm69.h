@@ -19,6 +19,7 @@ class DucoRFM69 : public Component,
  protected:
   uint8_t version_{0};   // Store the version register value
   bool detected_{false};
+  bool needs_init_{false}; // Flag to indicate if initialization is needed
 };
 
 }  // namespace duco_rfm69
