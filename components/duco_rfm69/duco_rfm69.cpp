@@ -12,7 +12,10 @@ void DucoRFM69::setup() {
 }
 
 void DucoRFM69::loop() {
-  this->spi_setup();
+  if (!this->spi_setup()) {
+    ESP_LOGE("duco_rfm69", "We're done here!");
+    return;
+  } 
   ESP_LOGI("duco_rfm69", "spi_setup() called!");
   // Read version register (address 0x10)
   this->enable();                           // Select the chip
