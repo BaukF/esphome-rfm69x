@@ -14,8 +14,8 @@ void DucoRFM69::setup() {
   // Initialize SPI device
   this->spi_setup();
 
-  // Read version register (0x10)
-  this->version_ = this->read_register(0x10);
+  // Read version register
+  this->version_ = this->read_register(REG_VERSION);
 
   // Evaluate results
   if (this->version_ == 0x24) {  // 0x24 = expected RFM69 version
@@ -39,6 +39,26 @@ void DucoRFM69::dump_config() {
 
   if (this->detected_) {
     ESP_LOGCONFIG(TAG, "  RFM69 detected, version=0x%02X", this->version_);
+
+    // Extra status registers
+    uint8_t opmode = this->read_register(REG_OPMODE);
+    ESP_LOGCONFIG(TAG, "  OPMODE: 0x%02X", opmode);
+
+    uint32_t frf = (uint32_t(this->read_register(REG_FRFMSB)) << 16) |
+                   (uint32_t(this->read_register(REG_FRFMID)) << 8) |
+                   this->read_register(REG_FRFLSB);
+    ESP_LOGCONFIG(TAG, "  Frequency register (FRF): 0x%06lX", frf);
+
+    uint8_t pa = this->read_register(REG_PALEVEL);
+    ESP_LOGCONFIG(TAG, "  PA Level: 0x%02X", pa);
+
+    uint8_t rssi = this->read_register(REG_RSSIVALUE);
+    ESP_LOGCONFIG(TAG, "  RSSI: %u dB", rssi);
+
+    uint8_t irq1 = this->read_register(REG_IRQFLAGS1);
+    uint8_t irq2 = this->read_register(REG_IRQFLAGS2);
+    ESP_LOGCONFIG(TAG, "  IRQ Flags: 1=0x%02X 2=0x%02X", irq1, irq2);
+
   } else {
     ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
   }
@@ -47,17 +67,19 @@ void DucoRFM69::dump_config() {
 // start custom methods for duco_rfm69
 uint8_t DucoRFM69::read_register(uint8_t addr) {
   this->enable();
-  this->write_byte(addr & 0x7F);   // clear MSB for read
+  this->write_byte(addr & 0x7F);   // clear MSB → read
   uint8_t value = this->read_byte();
   this->disable();
   return value;
 }
+
 void DucoRFM69::write_register(uint8_t addr, uint8_t value) {
   this->enable();
-  this->write_byte(addr | 0x80);   // set MSB for write
+  this->write_byte(addr | 0x80);   // set MSB → write
   this->write_byte(value);
   this->disable();
 }
+
 
 }  // namespace duco_rfm69
 }  // namespace esphome

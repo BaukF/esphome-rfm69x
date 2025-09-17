@@ -6,6 +6,17 @@
 namespace esphome {
 namespace duco_rfm69 {
 
+// RFM69 register addresses
+static const uint8_t REG_OPMODE     = 0x01;
+static const uint8_t REG_FRFMSB     = 0x07;
+static const uint8_t REG_FRFMID     = 0x08;
+static const uint8_t REG_FRFLSB     = 0x09;
+static const uint8_t REG_PALEVEL    = 0x11;
+static const uint8_t REG_VERSION    = 0x10;
+static const uint8_t REG_RSSIVALUE  = 0x24;
+static const uint8_t REG_IRQFLAGS1  = 0x27;
+static const uint8_t REG_IRQFLAGS2  = 0x28;
+
 class DucoRFM69 : public Component,
                   public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST,
                                         spi::CLOCK_POLARITY_LOW,
