@@ -17,6 +17,13 @@ void DucoRFM69::setup() {
   // Read version register
   this->version_ = this->read_register(REG_VERSION);
 
+  // Write a test value to a register (optional)
+  this->write_register(REG_OPMODE, 0x00);
+  this->write_register(REG_FRFMSB, 0xD9);
+  this->write_register(REG_FRFMID, 0x00);
+  this->write_register(REG_FRFLSB, 0x00);
+
+
   // Evaluate results
   if (this->version_ == 0x24) {  // 0x24 = expected RFM69 version
     ESP_LOGI(TAG, "RFM69 detected, version=0x%02X", this->version_);
