@@ -6,6 +6,8 @@ namespace duco_rfm69 {
 
 static const char *TAG = "duco_rfm69.component";
 
+
+// start default methods for esphome component
 void DucoRFM69::setup() {
   ESP_LOGD(TAG, "Running RFM69 setup...");
 
@@ -13,12 +15,9 @@ void DucoRFM69::setup() {
   this->spi_setup();
 
   // Read version register (0x10)
-  this->enable();                  // Pull CS low
-  this->write_byte(0x10 & 0x7F);   // Send address (MSB=0 → read)
-  this->version_ = this->read_byte();
-  this->disable();                 // Pull CS high
+  this->version_ = this->read_register(0x10);
 
-  // Evaluate result
+  // Evaluate results
   if (this->version_ == 0x24) {  // 0x24 = expected RFM69 version
     ESP_LOGI(TAG, "RFM69 detected, version=0x%02X", this->version_);
     this->detected_ = true;
@@ -43,6 +42,21 @@ void DucoRFM69::dump_config() {
   } else {
     ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
   }
+}
+
+// start custom methods for duco_rfm69
+uint8_t read_register(uint8_t addr) {
+  this->enable();            // Pull CS low
+  this->write_byte(addr & 0x7F);   // Send address (MSB=0 → read)
+  uint8_t value = this->read_byte(); // Read value
+  
+}
+  
+void DucoRFM69::write_register(uint8_t addr, uint8_t value) {
+  this->enable();
+  this->write_byte(addr | 0x80);   // set MSB for write
+  this->write_byte(value);
+  this->disable();
 }
 
 }  // namespace duco_rfm69
