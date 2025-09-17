@@ -1,5 +1,5 @@
 esphome:
-  name: rmf69x-sample
+  name: rfm69x-sample
   friendly_name: RFM69X Sample
   comment: "Sample configuration for RFM69X custom component"
   
@@ -14,8 +14,7 @@ logger:
 
 # Enable Home Assistant API
 api:
-  encryption: 
-  
+  encryption:   
     key: !secret api_encryption
 
 ota:
@@ -27,21 +26,21 @@ wifi:
     - ssid: !secret wifi_ssid
       password: !secret wifi_password
       
-  # Enable fallback hotspot (no captive portal) in case wifi connection fails
-  ap:
-    ssid: ${device_name}
-    password: !secret ota_password
-    ap_timeout: 15s
+#  # Enable fallback hotspot (no captive portal) in case wifi connection fails#
+#  ap:
+#    ssid: ${device_name}
+#    password: !secret ota_password
+#    ap_timeout: 15s
 
-esp32_ble_tracker:
-bluetooth_proxy:
+#3esp32_ble_tracker:
+#bluetooth_proxy:
 
 web_server:
   port: 80
 
-time:
-  - platform: homeassistant
-    id: homeassistant_time
+#time:
+ # - platform: homeassistant
+ #   id: homeassistant_time
 
 captive_portal:
 
