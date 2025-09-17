@@ -1,5 +1,16 @@
 {
-    "esphome.dashboardUri": "http://172.16.20.20:6052",
+    "esphome.dashboardUri": "http://localhost:6052",
     "esphome.validator": "dashboard",
-    "vscode-home-assistant.disableAutomaticFileAssociation": true
-}
+     "tasks": [
+        {
+            "label": "ESPHome: Compile",
+            "type": "shell",
+            "command": "esphome compile <your_config_file_name>.yaml",
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        }
+    ]
+    }

@@ -9,7 +9,7 @@
       ]
     }
   },
-  
+  "forwardPorts": [6052],
   "runArgs": [
     "--privileged",
     "--network=host"
