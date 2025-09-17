@@ -17,6 +17,8 @@ I have extremely basic programming skills and am using all that is at my disposa
   - [x] RFM69W chip
   - [x] Wiring for chip
   - [ ] wiring for serial
+- [x] Rename and redefine
+- [x] Upload to GIT
 - [x] Get bare minimum SPI component working
   - [x] Get the SPI bus talking and return value from FRFM, using loop as delayed log output (v0.1)
   - [x] Get the module working through the correct setup() function
@@ -30,6 +32,8 @@ I have extremely basic programming skills and am using all that is at my disposa
     - [x] read: PA Level: 0x9F
     - [x] read: RSSI: 0 dB
     - [x] read: IRQ Flags: 1=0x80 2=0x00
-- [x] Rename and redefine
-- [x] Upload to GIT
-- [ ] ...
+- [ ] Start sniffing for duco commands
+  - [ ] Configure the rfm69 for promiscuous mode
+  - [ ] Write caught commands to output
+  - [ ] Filter on Duco commands
+  - [ ] Find logic on narrowing down on a specific Duco
