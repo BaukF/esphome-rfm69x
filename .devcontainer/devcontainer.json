@@ -1,0 +1,17 @@
+{
+  "name": "ESPHome Dev Container",
+  "image": "ghcr.io/esphome/esphome:stable",
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esphome.esphome-vscode"
+      ]
+    }
+  },
+  
+  "runArgs": [
+    "--privileged",
+    "--network=host"
+  ]
+}
