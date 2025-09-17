@@ -47,7 +47,7 @@ captive_portal:
 
 # Here we define the existence of a custom component we developed
 external_components:
-  - source: github://BaukF/rfm69x
+  - source: ./components/
     components: [rfm69x]
     refresh: always
 
@@ -58,6 +58,6 @@ spi:
   miso_pin: GPIO19
 
 rfm69x:
-  id: rfm69x
+  id: rfm69x_compnent
   cs_pin: GPIO5
 
