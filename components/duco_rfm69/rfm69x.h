@@ -4,7 +4,7 @@
 #include "esphome/components/spi/spi.h"
 
 namespace esphome {
-namespace duco_rfm69 {
+namespace rfm69x {
 
 // RFM69 register addresses
 static const uint8_t REG_OPMODE     = 0x01;
@@ -17,7 +17,7 @@ static const uint8_t REG_RSSIVALUE  = 0x24;
 static const uint8_t REG_IRQFLAGS1  = 0x27;
 static const uint8_t REG_IRQFLAGS2  = 0x28;
 
-class DucoRFM69 : public Component,
+class RFM69x : public Component,
                   public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST,
                                         spi::CLOCK_POLARITY_LOW,
                                         spi::CLOCK_PHASE_LEADING,
@@ -34,5 +34,5 @@ class DucoRFM69 : public Component,
   void write_register(uint8_t addr, uint8_t value);
 };
 
-}  // namespace duco_rfm69
+}  // namespace rfm69x
 }  // namespace esphome
