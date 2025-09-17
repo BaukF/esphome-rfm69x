@@ -12,6 +12,11 @@ This is my autoddidactically challenging project of transforming the interesting
 I have extremely basic programming skills and am using all that is at my disposal to get to a working Duco RF bridge with serial communications. I have an enormous list of todo's before I get to a working sample.
 
 ## To do
+- [ ] Start sniffing for duco commands
+  - [ ] Configure the rfm69 for promiscuous mode
+  - [ ] Write caught commands to output
+  - [ ] Filter on Duco commands
+  - [ ] Find logic on narrowing down on a specific Duco
 - [ ] Get hardware
   - [x] ESP32Devkit1
   - [x] RFM69W chip
@@ -32,8 +37,4 @@ I have extremely basic programming skills and am using all that is at my disposa
     - [x] read: PA Level: 0x9F
     - [x] read: RSSI: 0 dB
     - [x] read: IRQ Flags: 1=0x80 2=0x00
-- [ ] Start sniffing for duco commands
-  - [ ] Configure the rfm69 for promiscuous mode
-  - [ ] Write caught commands to output
-  - [ ] Filter on Duco commands
-  - [ ] Find logic on narrowing down on a specific Duco
+
