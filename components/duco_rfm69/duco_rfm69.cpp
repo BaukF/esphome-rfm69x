@@ -45,13 +45,13 @@ void DucoRFM69::dump_config() {
 }
 
 // start custom methods for duco_rfm69
-uint8_t read_register(uint8_t addr) {
-  this->enable();            // Pull CS low
-  this->write_byte(addr & 0x7F);   // Send address (MSB=0 → read)
-  uint8_t value = this->read_byte(); // Read value
-  
+uint8_t DucoRFM69::read_register(uint8_t addr) {
+  this->enable();
+  this->write_byte(addr & 0x7F);   // clear MSB for read
+  uint8_t value = this->read_byte();
+  this->disable();
+  return value;
 }
-  
 void DucoRFM69::write_register(uint8_t addr, uint8_t value) {
   this->enable();
   this->write_byte(addr | 0x80);   // set MSB for write
