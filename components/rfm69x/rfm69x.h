@@ -26,6 +26,7 @@ class RFM69x : public Component,
   void setup() override;
   void loop() override;
   void dump_config() override;
+  void set_raw_codes(bool raw) { this->raw_codes_ = raw; }
 
  protected:
   bool raw_codes_{false};

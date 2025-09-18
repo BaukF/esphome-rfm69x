@@ -28,3 +28,5 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await spi.register_spi_device(var, config)
+    if config[CONF_RAW_CODES]:
+        cg.add(var.set_raw_codes(config[CONF_RAW_CODES]))
