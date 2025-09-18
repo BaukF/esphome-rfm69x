@@ -28,6 +28,8 @@ class RFM69x : public Component,
   void dump_config() override;
 
  protected:
+  bool raw_codes_{false};
+  const char* decode_opmode(uint8_t opmode);
   uint8_t version_{0};   // Store the version register value
   bool detected_{false};
   uint8_t read_register(uint8_t addr);

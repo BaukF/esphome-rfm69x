@@ -10,10 +10,13 @@ RFM69x = rfm69x_ns.class_(
     "RFM69x", cg.Component, spi.SPIDevice
 )
 
+CONF_RAW_CODES = "raw_codes"
+
 CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(RFM69x),
+            cv.Optional(CONF_RAW_CODES, default=False): cv.boolean,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)

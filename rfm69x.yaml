@@ -59,6 +59,7 @@ spi:
 rfm69x:
   id: rfm69x_compnent
   cs_pin: GPIO5
+  raw_codes: true
 
 #rf_sniffer:
 #  rfm69x_id: rfm69x_compnent

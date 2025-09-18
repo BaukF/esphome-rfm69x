@@ -43,31 +43,29 @@ void RFM69x::dump_config() {
   LOG_PIN("  CS Pin: ", this->cs_);
 
   if (this->detected_) {
-    ESP_LOGCONFIG(TAG, "  Detected RFM69, version=0x%02X", this->version_);
+    ESP_LOGCONFIG(TAG, "  Detected RFM69%s, version=0x%02X",
+                  this->raw_codes_ ? " [REG_VERSION=0x10]" : "", this->version_);
 
-    // Dump operating mode
     uint8_t opmode = this->read_register(REG_OPMODE);
-    ESP_LOGCONFIG(TAG, "  OPMODE: 0x%02X", opmode);
+    ESP_LOGCONFIG(TAG, "  OPMODE: %s%s",
+                  decode_opmode(opmode),
+                  this->raw_codes_ ? str_sprintf(" [0x%02X]", opmode).c_str() : "");
 
-    // Dump frequency (FRF = 3 bytes)
     uint32_t frf = (uint32_t(this->read_register(REG_FRFMSB)) << 16) |
                    (uint32_t(this->read_register(REG_FRFMID)) << 8) |
                    this->read_register(REG_FRFLSB);
-    float freq_hz = frf * 61.03515625f;  // 32MHz / 2^19 ≈ 61 Hz step
-    ESP_LOGCONFIG(TAG, "  Frequency: %.2f MHz (FRF=0x%06lX)", freq_hz / 1e6, frf);
+    float freq_hz = frf * 61.03515625f;
+    ESP_LOGCONFIG(TAG, "  Frequency: %.2f MHz%s",
+                  freq_hz / 1e6,
+                  this->raw_codes_ ? str_sprintf(" [FRF=0x%06lX]", frf).c_str() : "");
 
-    // Dump power amplifier level
     uint8_t pa = this->read_register(REG_PALEVEL);
-    ESP_LOGCONFIG(TAG, "  PA Level: 0x%02X", pa);
+    ESP_LOGCONFIG(TAG, "  PA Level: %u%s", pa & 0x1F,
+                  this->raw_codes_ ? str_sprintf(" [0x%02X]", pa).c_str() : "");
 
-    // Dump RSSI
     uint8_t rssi = this->read_register(REG_RSSIVALUE);
-    ESP_LOGCONFIG(TAG, "  RSSI: %u dB", rssi);
-
-    // Dump IRQ flags
-    uint8_t irq1 = this->read_register(REG_IRQFLAGS1);
-    uint8_t irq2 = this->read_register(REG_IRQFLAGS2);
-    ESP_LOGCONFIG(TAG, "  IRQ Flags: 1=0x%02X 2=0x%02X", irq1, irq2);
+    ESP_LOGCONFIG(TAG, "  RSSI: %u dB%s", rssi,
+                  this->raw_codes_ ? str_sprintf(" [0x%02X]", rssi).c_str() : "");
 
   } else {
     ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
@@ -91,6 +89,25 @@ void RFM69x::write_register(uint8_t addr, uint8_t value) {
   this->disable();
 }
 
+const char* RFM69x::decode_opmode(uint8_t opmode) {
+    // Mask the opmode to isolate the Mode bits (bits 4, 3, 2).
+    uint8_t mode = (opmode & 0x1C) >> 2;
+
+    switch (mode) {
+        case 0x00:
+            return "Sleep Mode";
+        case 0x01:
+            return "Standby Mode";
+        case 0x02:
+            return "Synthesizer Mode";
+        case 0x03:
+            return "Transmitter Mode";
+        case 0x04:
+            return "Receiver Mode";
+        default:
+            return "Unknown Mode";
+    }
+}
 
 }  // namespace rfm69x
 }  // namespace esphome
