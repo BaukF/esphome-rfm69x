@@ -9,29 +9,21 @@ static const char *TAG = "rfm69x.component";
 
 // start default methods for esphome component
 void RFM69x::setup() {
-  ESP_LOGD(TAG, "Running RFM69x setup...");
+  ESP_LOGD(TAG, "Initializing RFM69x...");
 
-  // Initialize SPI device
+  // Prepare SPI
   this->spi_setup();
 
-  // Read version register
+  // Probe version register
   this->version_ = this->read_register(REG_VERSION);
 
-  // Write a test value to a register (optional)
-  this->write_register(REG_OPMODE, 0x00);
-  this->write_register(REG_FRFMSB, 0xD9);
-  this->write_register(REG_FRFMID, 0x00);
-  this->write_register(REG_FRFLSB, 0x00);
-
-
-  // Evaluate results
-  if (this->version_ == 0x24) {  // 0x24 = expected RFM69 version
-    ESP_LOGI(TAG, "RFM69x detected, version=0x%02X", this->version_);
+  if (this->version_ == 0x24) {
     this->detected_ = true;
+    ESP_LOGI(TAG, "RFM69 detected, version=0x%02X", this->version_);
   } else {
-    ESP_LOGE(TAG, "RFM69x probe failed, got 0x%02X", this->version_);
     this->detected_ = false;
-    this->mark_failed();  // tells ESPHome this component isn’t usable
+    ESP_LOGE(TAG, "RFM69 not detected, read=0x%02X", this->version_);
+    this->mark_failed();
   }
 }
 

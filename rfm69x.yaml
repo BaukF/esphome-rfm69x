@@ -47,7 +47,7 @@ captive_portal:
 # Here we define the existence of a custom component we developed
 external_components:
   - source: ./components/
-    components: [rfm69x]
+    components: [rfm69x, rf_sniffer]
     refresh: always
 
 
@@ -60,3 +60,9 @@ rfm69x:
   id: rfm69x_compnent
   cs_pin: GPIO5
 
+#rf_sniffer:
+#  rfm69x_id: rfm69x_compnent
+#  log_raw_packets: true
+#  log_frequency_scan: true
+#  packet_filter_min_length: 5
+#  packet_filter_max_length: 64
