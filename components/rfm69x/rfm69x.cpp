@@ -22,10 +22,16 @@ void RFM69x::setup() {
 
   this->reset_rfm69x();
 
-  //this->configure_rfm69x();
-
   // Probe version register
   this->version_ = this->read_register_(REG_VERSION);
+  if (this->version_ == 0x24 || this->version_ == 0x22) { // 0x24 = RFM69HCW, 0x22 = RFM69CW
+    this->detected_ = true;
+    ESP_LOGI(TAG, "Detected RFM69, version=0x%02X", this->version_);
+    this->configure_rfm69x();
+  } else {
+    this->detected_ = false;
+    ESP_LOGE(TAG, "RFM69 not detected (last read=0x%02X)", this->version_);
+  }
 }
 
 void RFM69x::loop() {
