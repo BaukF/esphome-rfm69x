@@ -114,7 +114,7 @@ void RFM69x::set_frequency(uint32_t freq) {
 void RFM69x::configure_rfm69x() {
   // set frequency
   if (this->frequency_ != 0) {
-    uint64_t frf = ((uint64_t) this->frequency_ << 19) / 32000000UL;
+    uint32_t frf = (uint32_t)((double)this->frequency_ / 61.03515625); 
     this->write_register_(REG_FRFMSB, (uint8_t) (frf >> 16));
     this->write_register_(REG_FRFMID, (uint8_t) (frf >> 8));
     this->write_register_(REG_FRFLSB, (uint8_t) (frf >> 0));
