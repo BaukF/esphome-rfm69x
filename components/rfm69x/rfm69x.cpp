@@ -20,17 +20,12 @@ void RFM69x::setup() {
   // Prepare SPI
   this->spi_setup();
 
+  this->reset_rfm69x();
+
+  this->configure_rfm69x();
+
   // Probe version register
   this->version_ = this->read_register_(REG_VERSION);
-
-  if (this->version_ == 0x24) {
-    this->detected_ = true;
-    ESP_LOGI(TAG, "RFM69 detected, version=0x%02X", this->version_);
-  } else {
-    this->detected_ = false;
-    ESP_LOGE(TAG, "RFM69 not detected, read=0x%02X", this->version_);
-    this->mark_failed();
-  }
 }
 
 void RFM69x::loop() {
@@ -100,7 +95,38 @@ void RFM69x::write_register_(uint8_t addr, uint8_t value) {
   this->write_byte(value);
   this->disable();
 }
+/*
+void RFM69x::set_frequency(uint32_t freq) {
+  // frequency in Hz, e.g. 868000000
+  this->frequency_ = freq;
+  uint32_t frf = (freq << 2) / 61; // see datasheet
+  this->write_register_(REG_FRFMSB, (frf >> 16) & 0xFF);
+  this->write_register_(REG_FRFMID, (frf >> 8) & 0xFF);
+  this->write_register_(REG_FRFLSB, frf & 0xFF);
+}*/
 
+void RFM69x::set_promiscuous_mode(bool promiscuous) {
+  // to be implemented
+}
+
+void RFM69x::configure_rfm69x() {
+  // set frequency
+  //sthis->set_frequency(this->frequency_);
+  // set promiscuous mode
+  this->set_promiscuous_mode(this->promiscuous_mode_);
+  // other configuration can be added here
+}
+
+void RFM69x::reset_rfm69x() {
+  if (this->reset_pin_ != 0) {
+    this->reset_pin_->digital_write(false);
+    delay(2);
+    this->reset_pin_->digital_write(true);
+    delay(5); // wait 5 ms to stabilize
+  } else {
+    ESP_LOGW(TAG, "Reset pin not defined, No reset RFM69x at initialization");
+  }
+}
 
 // Start decoding methods for rfm69x
 const char* RFM69x::decode_opmode_(uint8_t opmode) {

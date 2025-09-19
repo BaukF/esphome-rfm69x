@@ -53,6 +53,22 @@ For the 868MHz communications I've decided to work with a RFM69w module (low pow
 
 In the future, I hope to create a serial connection to read values such as voltages and power etcetera but I haven't dived in it yet, as my first aim is to control the device (low-mid-medium-high debit).
 
+## My hardware setup
+ESP32-devkit-1
+HopeRF RFM69w
+
+wiring:
+| ESP32 Pin  | RFM69W Pin                  |
+| ---------- | --------------------------- |
+| **3V3**    | VCC (RFM69W is 3.3 V only!) |
+| **GND**    | GND                         |
+| **GPIO18** | SCK (CLK)                   |
+| **GPIO23** | MOSI                        |
+| **GPIO19** | MISO                        |
+| **GPIO5**  | NSS / CS                    |
+| **GPIO4**  | DIO0                        |
+| **GPIO16** | RESET                       |
+
 
 ## About
 This is my autoddidactically challenging project of transforming the interesting work at the project https://github.com/arnemauer/Ducobox-ESPEasy-Plugin into ESPHome.

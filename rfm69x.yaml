@@ -57,9 +57,11 @@ spi:
   miso_pin: GPIO19
 
 rfm69x:
-  id: rfm69x_compnent
+  id: rfm69x_comonent
   cs_pin: GPIO5
   raw_codes: true
+  reset_pin: GPIO16
+  #frequency: 868
 
 #rf_sniffer:
 #  rfm69x_id: rfm69x_compnent
