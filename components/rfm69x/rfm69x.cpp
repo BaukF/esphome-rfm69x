@@ -22,7 +22,7 @@ void RFM69x::setup() {
 
   this->reset_rfm69x();
 
-  this->configure_rfm69x();
+  //this->configure_rfm69x();
 
   // Probe version register
   this->version_ = this->read_register_(REG_VERSION);
