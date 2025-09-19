@@ -101,7 +101,7 @@ void RFM69x::write_register_(uint8_t addr, uint8_t value) {
   this->write_byte(value);
   this->disable();
 }
-/*
+
 void RFM69x::set_frequency(uint32_t freq) {
   // frequency in Hz, e.g. 868000000
   this->frequency_ = freq;
@@ -109,17 +109,24 @@ void RFM69x::set_frequency(uint32_t freq) {
   this->write_register_(REG_FRFMSB, (frf >> 16) & 0xFF);
   this->write_register_(REG_FRFMID, (frf >> 8) & 0xFF);
   this->write_register_(REG_FRFLSB, frf & 0xFF);
-}*/
-
-void RFM69x::set_promiscuous_mode(bool promiscuous) {
-  // to be implemented
 }
 
 void RFM69x::configure_rfm69x() {
   // set frequency
-  //sthis->set_frequency(this->frequency_);
+  if (this->frequency_ != 0) {
+    uint64_t frf = ((uint64_t) this->frequency_ << 19) / 32000000UL;
+    this->write_register_(REG_FRFMSB, (uint8_t) (frf >> 16));
+    this->write_register_(REG_FRFMID, (uint8_t) (frf >> 8));
+    this->write_register_(REG_FRFLSB, (uint8_t) (frf >> 0));
+  }
+
+  
   // set promiscuous mode
-  this->set_promiscuous_mode(this->promiscuous_mode_);
+  if (this->promiscuous_mode_) {
+    uint8_t val = this->read_register_(REG_PACKETCONFIG1);
+    val |= 0x04; // set bit 2
+    this->write_register_(REG_PACKETCONFIG1, val);
+  }
   // other configuration can be added here
 }
 

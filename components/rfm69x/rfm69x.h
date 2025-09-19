@@ -21,6 +21,8 @@ class RFM69x : public Component,
   // Enable/disable raw register values in any output that has raw codes (also see __init__.py)
   void set_raw_codes(bool raw) { this->raw_codes_ = raw; }
   void set_reset_pin(InternalGPIOPin *reset_pin) { this->reset_pin_ = reset_pin; }
+  void set_frequency(uint32_t freq); // set frequency in MHz, e.g. 868000000
+  void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
 
  protected:
   //protected variables
@@ -29,18 +31,16 @@ class RFM69x : public Component,
   bool raw_codes_{false};         // whether to show raw register values in dump_config
   InternalGPIOPin *reset_pin_{nullptr};          // optional reset pin
   uint8_t version_{0};            // version read from REG_VERSION
-  //uint32_t frequency_{868000000}; // default frequency 868 MHz
+  uint32_t frequency_{868000000}; // default frequency 868 MHz
   bool promiscuous_mode_{false};  // whether promiscuous mode is enabled                                        
 
   // Set and get methods for the module configuration
   void configure_rfm69x(); // configure the module with current settings
   void reset_rfm69x();  // reset the module via reset pin if defined
-  //svoid set_frequency(uint32_t freq); // set frequency in MHz, e.g. 868000000
-  void set_promiscuous_mode(bool promiscuous); // set promiscuous mode on/off
-
+  
   // Get methods for the module configuration
   //uint8_t get_reset_pin_() const { return this->reset_pin_; }
-  //uint32_t get_frequency_() const { return this->frequency_; }
+  uint32_t get_frequency_() const { return this->frequency_; }
   bool get_promiscuous_mode_() const { return this->promiscuous_mode_; }  
 
   // helpful methods

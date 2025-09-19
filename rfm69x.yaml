@@ -61,7 +61,7 @@ rfm69x:
   cs_pin: GPIO5
   raw_codes: true
   reset_pin: GPIO16
-  #frequency: 868
+  frequency: 868.0MHz
 
 #rf_sniffer:
 #  rfm69x_id: rfm69x_compnent

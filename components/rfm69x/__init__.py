@@ -28,6 +28,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_FREQUENCY): cv.positive_int,
             cv.Optional(CONF_PROMISCUOUS_MODE, default=False): cv.boolean,
+            cv.Optional(CONF_FREQUENCY): cv.frequency
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -43,7 +44,7 @@ async def to_code(config):
     if CONF_RESET_PIN in config:
         reset_pin = await cg.gpio_pin_expression(config[CONF_RESET_PIN])
         cg.add(var.set_reset_pin(reset_pin))
-    if CONF_FREQUENCY in config:
-        cg.add(var.set_frequency(config[CONF_FREQUENCY]))
     if config[CONF_PROMISCUOUS_MODE]:
         cg.add(var.set_promiscuous_mode(config[CONF_PROMISCUOUS_MODE]))
+    if CONF_FREQUENCY in config:
+        cg.add(var.set_frequency(config[CONF_FREQUENCY]))  
