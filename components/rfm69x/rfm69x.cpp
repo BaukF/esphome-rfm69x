@@ -81,6 +81,11 @@ void RFM69x::dump_config() {
     ESP_LOGCONFIG(TAG, "  IRQFLAGS2: %s%s",
                   decode_irqflags2_(irq2).c_str(),
                   irq2_raw_str.c_str());
+
+    constexpr double FSTEP = 32000000.0 / 524288.0;  
+    uint32_t frf = (uint32_t)(this->frequency_ / FSTEP);
+    ESP_LOGCONFIG(TAG, "  Configured frequency: %.2f MHz [FRF=0x%06X]",
+             this->frequency_ / 1e6, frf);
   } else {
     ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
   }
@@ -114,13 +119,18 @@ void RFM69x::set_frequency(uint32_t freq) {
 void RFM69x::configure_rfm69x() {
   // set frequency
   if (this->frequency_ != 0) {
-    uint32_t frf = (uint32_t)((double)this->frequency_ / 61.03515625); 
-    this->write_register_(REG_FRFMSB, (uint8_t) (frf >> 16));
-    this->write_register_(REG_FRFMID, (uint8_t) (frf >> 8));
-    this->write_register_(REG_FRFLSB, (uint8_t) (frf >> 0));
-  }
+    // Step size = 32 MHz / 2^19 = 61.03515625 Hz
+    constexpr double FSTEP = 32000000.0 / 524288.0;  
 
-  
+    uint32_t frf = (uint32_t)(this->frequency_ / FSTEP);
+
+    this->write_register_(REG_FRFMSB, (uint8_t)(frf >> 16));
+    this->write_register_(REG_FRFMID, (uint8_t)(frf >> 8));
+    this->write_register_(REG_FRFLSB, (uint8_t)(frf));
+
+    ESP_LOGI(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
+             this->frequency_ / 1e6, frf);
+  }
   // set promiscuous mode
   if (this->promiscuous_mode_) {
     uint8_t val = this->read_register_(REG_PACKETCONFIG1);
