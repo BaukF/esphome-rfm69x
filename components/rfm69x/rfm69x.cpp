@@ -127,10 +127,10 @@ void RFM69x::set_mode_(uint8_t mode) {
 void RFM69x::set_frequency(uint32_t freq) {
   this->frequency_ = freq;
 
-  uint8_t current_mode = this->read_register_(REG_OPMODE) & 0x1C
+  uint8_t current_mode = this->read_register_(REG_OPMODE) & 0x1C;
 
   // Datasheet: frequency registers must be written in Standby
-  this->set_mode_(REG_OPMODE, (opmode & 0xE3) | OPMODE_STANDBY);  // Standby mode
+  this->set_mode_((current_mode & 0xE3) | OPMODE_STANDBY);// Standby mode
 
   // FRF = Fcarrier / Fstep, Fstep = 32 MHz / 2^19
   constexpr double FSTEP = 32000000.0 / 524288.0;
