@@ -52,13 +52,17 @@ void RFM69x::dump_config() {
                   decode_opmode_(opmode),
                   this->raw_codes_ ? str_sprintf(" [0x%02X]", opmode).c_str() : "");
 
-    uint32_t frf = (uint32_t(this->read_register_(REG_FRFMSB)) << 16) |
-                   (uint32_t(this->read_register_(REG_FRFMID)) << 8) |
-                   this->read_register_(REG_FRFLSB);
-    float freq_hz = frf * 61.03515625f;
+    // Read FRF registers once
+    uint8_t msb = this->read_register_(REG_FRFMSB);
+    uint8_t mid = this->read_register_(REG_FRFMID);
+    uint8_t lsb = this->read_register_(REG_FRFLSB);
+
+    uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
+    double freq_hz = frf * (32000000.0 / 524288.0);
+
     ESP_LOGCONFIG(TAG, "  Frequency: %.2f MHz%s",
                   freq_hz / 1e6,
-                  this->raw_codes_ ? str_sprintf(" [FRF=0x%06lX]", frf).c_str() : "");
+                  this->raw_codes_ ? str_sprintf(" [FRF=0x%06X]", frf).c_str() : "");
 
     uint8_t pa = this->read_register_(REG_PALEVEL);
     ESP_LOGCONFIG(TAG, "  PA Level: %u%s", pa & 0x1F,
@@ -68,35 +72,29 @@ void RFM69x::dump_config() {
     ESP_LOGCONFIG(TAG, "  RSSI: %u dB%s", rssi,
                   this->raw_codes_ ? str_sprintf(" [0x%02X]", rssi).c_str() : "");
     
-    // lets also dump IRQ flags
     uint8_t irq1 = this->read_register_(REG_IRQFLAGS1);
     uint8_t irq2 = this->read_register_(REG_IRQFLAGS2);
 
-    std::string irq1_raw_str = raw_codes_ ? str_sprintf(" [0x%02X]", irq1) : "";
     ESP_LOGCONFIG(TAG, "  IRQFLAGS1: %s%s",
                   decode_irqflags1_(irq1).c_str(),
-                  irq1_raw_str.c_str());
-
-    std::string irq2_raw_str = raw_codes_ ? str_sprintf(" [0x%02X]", irq2) : "";
+                  this->raw_codes_ ? str_sprintf(" [0x%02X]", irq1).c_str() : "");
     ESP_LOGCONFIG(TAG, "  IRQFLAGS2: %s%s",
                   decode_irqflags2_(irq2).c_str(),
-                  irq2_raw_str.c_str());
+                  this->raw_codes_ ? str_sprintf(" [0x%02X]", irq2).c_str() : "");
 
-    // dump frequency registers
-    uint8_t msb = this->read_register(REG_FRFMSB);
-    uint8_t mid = this->read_register(REG_FRFMID);
-    uint8_t lsb = this->read_register(REG_FRFLSB);
-
-    uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
-    double freq_hz = frf * (32000000.0 / 524288.0);
-
-    ESP_LOGCONFIG(TAG, "   Frequency registers: 0x%06X => %.2f MHz",
-                  frf, freq_hz / 1e6);
+    // Also show what we think we configured
+    if (this->frequency_ != 0) {
+      constexpr double FSTEP = 32000000.0 / 524288.0;
+      uint32_t frf_expected = static_cast<uint32_t>(this->frequency_ / FSTEP);
+      ESP_LOGCONFIG(TAG, "  Configured frequency: %.2f MHz [FRF=0x%06X]",
+                    this->frequency_ / 1e6, frf_expected);
+    }
 
   } else {
     ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
   }
 }
+
 
 // start helper methods for rfm69x
 uint8_t RFM69x::read_register_(uint8_t addr) {
