@@ -82,10 +82,17 @@ void RFM69x::dump_config() {
                   decode_irqflags2_(irq2).c_str(),
                   irq2_raw_str.c_str());
 
-    constexpr double FSTEP = 32000000.0 / 524288.0;
-    uint32_t freq = (uint32_t)(this->frequency_ / FSTEP);
-    ESP_LOGCONFIG(TAG, "  Configured frequency: %.2f MHz [FRF=0x%06X]",
-             this->frequency_ / 1e6, freq);
+    // dump frequency registers
+    uint8_t msb = this->read_register(REG_FRFMSB);
+    uint8_t mid = this->read_register(REG_FRFMID);
+    uint8_t lsb = this->read_register(REG_FRFLSB);
+
+    uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
+    double freq_hz = frf * (32000000.0 / 524288.0);
+
+    ESP_LOGCONFIG(TAG, "   Frequency registers: 0x%06X => %.2f MHz",
+                  frf, freq_hz / 1e6);
+
   } else {
     ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
   }
