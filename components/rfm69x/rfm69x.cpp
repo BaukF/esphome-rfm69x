@@ -101,19 +101,25 @@ uint8_t RFM69x::read_register_(uint8_t addr) {
 }
 
 void RFM69x::write_register_(uint8_t addr, uint8_t value) {
+  uint8_t buffer[2] = { static_cast<uint8_t>(addr | 0x80), value };
   this->enable();
-  this->write_byte(addr | 0x80);   // set MSB → write
-  this->write_byte(value);
+  this->write_array(buffer, 2);
   this->disable();
 }
 
 void RFM69x::set_frequency(uint32_t freq) {
-  // frequency in Hz, e.g. 868000000
   this->frequency_ = freq;
-  uint32_t frf = (freq << 2) / 61; // see datasheet
+
+  // FRF = Fcarrier / Fstep, Fstep = 32 MHz / 2^19
+  constexpr double FSTEP = 32000000.0 / 524288.0;
+  uint32_t frf = static_cast<uint32_t>(freq / FSTEP);
+
   this->write_register_(REG_FRFMSB, (frf >> 16) & 0xFF);
   this->write_register_(REG_FRFMID, (frf >> 8) & 0xFF);
   this->write_register_(REG_FRFLSB, frf & 0xFF);
+
+  ESP_LOGI(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
+           freq / 1e6, frf);
 }
 
 void RFM69x::configure_rfm69x() {
