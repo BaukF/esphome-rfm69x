@@ -37,6 +37,7 @@ class RFM69x : public Component,
   // Set and get methods for the module configuration
   void configure_rfm69x(); // configure the module with current settings
   void reset_rfm69x();  // reset the module via reset pin if defined
+  void RFM69x::set_mode_(uint8_t mode) // set the operation mode
   
   // Get methods for the module configuration
   //uint8_t get_reset_pin_() const { return this->reset_pin_; }

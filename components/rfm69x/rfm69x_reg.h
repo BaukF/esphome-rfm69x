@@ -60,11 +60,14 @@
 #define OPMODE_LISTEN_ON       0x40
 #define OPMODE_LISTEN_ABORT    0x20
 #define OPMODE_MODE_MASK       0x1C
-#define OPMODE_SLEEP           0x00
-#define OPMODE_STANDBY         0x04
 #define OPMODE_SYNTHESIZER     0x08
-#define OPMODE_RX              0x10
-#define OPMODE_TX              0x0C
+
+#define OPMODE_SLEEP      (0x00 << 2)  // 0x00
+#define OPMODE_STANDBY    (0x01 << 2)  // 0x04
+#define OPMODE_FS         (0x02 << 2)  // 0x08
+#define OPMODE_TX         (0x03 << 2)  // 0x0C
+#define OPMODE_RX         (0x04 << 2)  // 0x10
+
 
 // REG_IRQFLAGS1 (0x27)
 #define IRQ1_MODEREADY         0x80

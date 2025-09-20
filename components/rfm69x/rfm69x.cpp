@@ -112,8 +112,25 @@ void RFM69x::write_register_(uint8_t addr, uint8_t value) {
   this->disable();
 }
 
+void RFM69x::set_mode_(uint8_t mode) {
+  // Keep other OPMODE bits (like listen) intact
+  uint8_t opmode = this->read_register_(REG_OPMODE);
+  opmode = (opmode & 0xE3) | (mode << 2);  // Mode bits are [4:2]
+  this->write_register_(REG_OPMODE, opmode);
+
+  // Wait for ModeReady
+  while (!(this->read_register_(REG_IRQFLAGS1) & 0x80)) {
+    delay(1);
+  }
+}
+
 void RFM69x::set_frequency(uint32_t freq) {
   this->frequency_ = freq;
+
+  uint8_t current_mode = this->read_register_(REG_OPMODE) & 0x1C
+
+  // Datasheet: frequency registers must be written in Standby
+  this->set_mode_(REG_OPMODE, (opmode & 0xE3) | OPMODE_STANDBY);  // Standby mode
 
   // FRF = Fcarrier / Fstep, Fstep = 32 MHz / 2^19
   constexpr double FSTEP = 32000000.0 / 524288.0;
@@ -125,6 +142,8 @@ void RFM69x::set_frequency(uint32_t freq) {
 
   ESP_LOGI(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
            freq / 1e6, frf);
+
+   this->set_mode_(current_mode); // restore previous mode
 }
 
 void RFM69x::configure_rfm69x() {
