@@ -20,7 +20,7 @@ void RFM69x::setup() {
   // Prepare SPI
   this->spi_setup();
 
-  //this->reset_rfm69x();
+  this->reset_rfm69x();
 
   // Probe version register
   this->version_ = this->read_register_(REG_VERSION);
