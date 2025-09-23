@@ -57,15 +57,10 @@ spi:
   miso_pin: GPIO19
 
 rfm69x:
-  id: rfm69x_comonent
+  id: rfm69x_component
   cs_pin: GPIO5
-  raw_codes: true
-  reset_pin: GPIO16
-  frequency: 868.0MHz
 
-#rf_sniffer:
-#  rfm69x_id: rfm69x_compnent
-#  log_raw_packets: true
-#  log_frequency_scan: true
-#  packet_filter_min_length: 5
-#  packet_filter_max_length: 64
+rf_sniffer:
+  id: sniffer_component
+  radio_id: rfm69x_component
+
