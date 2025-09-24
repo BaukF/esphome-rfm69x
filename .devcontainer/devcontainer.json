@@ -1,15 +1,29 @@
 {
   "name": "ESPHome Dev Container",
   "image": "ghcr.io/esphome/esphome:stable",
-  
   "customizations": {
     "vscode": {
       "extensions": [
-        "esphome.esphome-vscode"
-      ]
+        "esphome.esphome-vscode",
+        "ms-python.black-formatter",
+        "ms-vscode.cpptools"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter"
+        },
+        "[cpp]": {
+          "editor.defaultFormatter": "ms-vscode.cpptools"
+        },
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true
+      }
     }
   },
-  "forwardPorts": [6052],
+  "forwardPorts": [
+    6052
+  ],
   "runArgs": [
     "--privileged",
     "--network=host"
