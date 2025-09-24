@@ -14,18 +14,15 @@ public:
     void setup() override;
     void loop() override;
     void dump_config() override;
+    void set_radio(rfm69x::RFM69x *radio);
+
     
 private:
-    Component *radio_{nullptr};
-    rfm69x::RFM69x *rfm69x_radio_{nullptr};
-    cc1101::CC1101 *cc1101_radio_{nullptr};
+    rfm69x::RFM69x *radio_{nullptr};
+    //rfm69x::RFM69x *rfm69x_radio_{nullptr};
+    //cc1101::CC1101 *cc1101_radio_{nullptr};
 
-protected:
-    void set_radio_component_(Component *parent) {
-    void set_frequency(float frequency);
+
 };
-
-
-
 }  // namespace rf_sniffer
 }  // namespace esphome
