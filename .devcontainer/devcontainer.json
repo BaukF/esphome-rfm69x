@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
   "name": "ESPHome Dev Container",
   "image": "ghcr.io/esphome/esphome:stable",
   "customizations": {
@@ -21,6 +22,7 @@
       }
     }
   },
+  // Ports forwarded to host automatically
   "forwardPorts": [
     6052
   ],

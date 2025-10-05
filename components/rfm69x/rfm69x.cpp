@@ -71,7 +71,7 @@ void RFM69x::dump_config() {
     uint8_t rssi = this->read_register_(REG_RSSIVALUE);
     ESP_LOGCONFIG(TAG, "  RSSI: %u dB%s", rssi,
                   this->raw_codes_ ? str_sprintf(" [0x%02X]", rssi).c_str() : "");
-    
+
     uint8_t irq1 = this->read_register_(REG_IRQFLAGS1);
     uint8_t irq2 = this->read_register_(REG_IRQFLAGS2);
 
@@ -91,7 +91,7 @@ void RFM69x::dump_config() {
     }
 
   } else {
-    ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X)", this->version_);
+    ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X), check SPI/MOSI/MISO/CS/wiring.", this->version_);
   }
 }
 
@@ -150,7 +150,7 @@ void RFM69x::configure_rfm69x() {
   // set frequency
   if (this->frequency_ != 0) {
     // Step size = 32 MHz / 2^19 = 61.03515625 Hz
-    constexpr double FSTEP = 32000000.0 / 524288.0;  
+    constexpr double FSTEP = 32000000.0 / 524288.0;
 
     uint32_t frf = (uint32_t)(this->frequency_ / FSTEP);
 

@@ -1,7 +1,7 @@
 {
-    "esphome.dashboardUri": "http://localhost:6052",
+    "esphome.dashboardUri": "http://home.mordor.nl:6052",
     "esphome.validator": "dashboard",
-     "tasks": [
+    "tasks": [
         {
             "label": "ESPHome: Compile",
             "type": "shell",
@@ -13,4 +13,4 @@
             }
         }
     ]
-    }
+}
