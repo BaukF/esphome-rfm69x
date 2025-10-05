@@ -1,16 +1,31 @@
 {
-    "esphome.dashboardUri": "http://home.mordor.nl:6052",
-    "esphome.validator": "dashboard",
-    "tasks": [
+    "configurations": [
         {
-            "label": "ESPHome: Compile",
-            "type": "shell",
-            "command": "esphome compile <your_config_file_name>.yaml",
-            "group": "build",
-            "presentation": {
-                "reveal": "always",
-                "panel": "new"
-            }
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/root/.platformio/packages/framework-espidf/components/**",
+                "/root/.platformio/packages/framework-arduinoespressif32/cores/**",
+                "/root/.platformio/packages/framework-arduinoespressif32/libraries/**",
+                "/root/.platformio/packages/framework-arduinoespressif8266/cores/**",
+                "/root/.platformio/packages/framework-arduinoespressif8266/libraries/**",
+                "/root/.platformio/packages/toolchain-xtensa32/xtensa-esp32-elf/include/**",
+                "/root/.platformio/packages/toolchain-xtensa/xtensa-lx106-elf/include/**",
+                "/config/.esphome/build/**",
+                "/data/**"
+            ],
+            "defines": [
+                "ESPHOME",
+                "USE_ESP32",
+                "USE_ESP8266"
+            ],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "compileCommands": "${workspaceFolder}/compile_commands.json",
+            "configurationProvider": "ms-vscode.cpptools"
         }
-    ]
+    ],
+    "version": 4
 }
