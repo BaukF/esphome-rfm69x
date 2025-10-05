@@ -29,8 +29,7 @@ namespace esphome
       ESP_LOGCONFIG(TAG, "RF Sniffer:");
       if (this->radio_ != nullptr)
       {
-        ESP_LOGCONFIG(TAG, "  Using radio component:");
-        this->radio_->dump_config();
+        ESP_LOGCONFIG(TAG, "  Using radio component: RFM69x");
       }
       else
       {

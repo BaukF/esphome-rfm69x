@@ -132,34 +132,25 @@ void RFM69x::set_frequency(uint32_t freq) {
   // Datasheet: frequency registers must be written in Standby
   this->set_mode_((current_mode & 0xE3) | OPMODE_STANDBY);// Standby mode
 
-  // FRF = Fcarrier / Fstep, Fstep = 32 MHz / 2^19
+  // Step size = 32 MHz / 2^19 = 61.03515625 Hz
   constexpr double FSTEP = 32000000.0 / 524288.0;
-  uint32_t frf = static_cast<uint32_t>(freq / FSTEP);
 
-  this->write_register_(REG_FRFMSB, (frf >> 16) & 0xFF);
-  this->write_register_(REG_FRFMID, (frf >> 8) & 0xFF);
-  this->write_register_(REG_FRFLSB, frf & 0xFF);
+  uint32_t frf = (uint32_t)(this->frequency_ / FSTEP);
+
+  this->write_register_(REG_FRFMSB, (uint8_t)(frf >> 16));
+  this->write_register_(REG_FRFMID, (uint8_t)(frf >> 8));
+  this->write_register_(REG_FRFLSB, (uint8_t)(frf));
 
   ESP_LOGI(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
-           freq / 1e6, frf);
+            this->frequency_ / 1e6, frf);
 
-   this->set_mode_(current_mode); // restore previous mode
+  this->set_mode_(current_mode); // restore previous mode
 }
 
 void RFM69x::configure_rfm69x() {
   // set frequency
   if (this->frequency_ != 0) {
-    // Step size = 32 MHz / 2^19 = 61.03515625 Hz
-    constexpr double FSTEP = 32000000.0 / 524288.0;
-
-    uint32_t frf = (uint32_t)(this->frequency_ / FSTEP);
-
-    this->write_register_(REG_FRFMSB, (uint8_t)(frf >> 16));
-    this->write_register_(REG_FRFMID, (uint8_t)(frf >> 8));
-    this->write_register_(REG_FRFLSB, (uint8_t)(frf));
-
-    ESP_LOGI(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
-             this->frequency_ / 1e6, frf);
+    set_frequency(this->frequency_);
   }
   // set promiscuous mode
   if (this->promiscuous_mode_) {
