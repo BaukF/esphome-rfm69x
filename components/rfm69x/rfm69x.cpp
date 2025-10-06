@@ -287,16 +287,11 @@ namespace esphome
 
     void RFM69x::set_mode_(uint8_t mode)
     {
-      // Keep other OPMODE bits (like listen) intact
       uint8_t opmode = this->read_register_(REG_OPMODE);
-      opmode = (opmode & 0xE3) | (mode << 2); // Mode bits are [4:2]
+      opmode = (opmode & ~OPMODE_MODE_MASK) | mode;
       this->write_register_(REG_OPMODE, opmode);
 
-      // Wait for ModeReady
-      while (!(this->read_register_(REG_IRQFLAGS1) & 0x80))
-      {
-        delay(1);
-      }
+      delay(5); // wait for mode change to take effect
     }
 
     uint32_t RFM69x::get_frequency_actual_()
