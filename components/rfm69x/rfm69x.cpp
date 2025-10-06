@@ -24,6 +24,8 @@ namespace esphome
       this->spi_setup();
 
       this->reset_rfm69x();
+      this->configure_rfm69x();
+      delay(10); // Give it a moment to start
 
       // Probe version register
       this->version_ = this->read_register_(REG_VERSION);
