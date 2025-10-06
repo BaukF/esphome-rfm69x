@@ -41,6 +41,11 @@ namespace esphome
           last_check = millis();
         }
 
+        if (millis() - last_check > 10000)
+        {
+          this->radio_->dump_config();
+        }
+
         if (this->radio_->packet_available())
         {
           ESP_LOGW("RfSniffer", "*** PACKET DETECTED! ***");
