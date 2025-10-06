@@ -31,6 +31,8 @@ namespace esphome
       if (this->radio_ != nullptr)
       {
         ESP_LOGCONFIG(TAG, "  Using radio component: RFM69x");
+
+        ESP_LOGCONFIG(TAG, "  let's see if promiscuous mode is set:");
         this->radio_->dump_config();
       }
       else
