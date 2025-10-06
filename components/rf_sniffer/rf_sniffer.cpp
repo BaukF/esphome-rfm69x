@@ -38,7 +38,6 @@ namespace esphome
         if (millis() - last_check > 5000)
         {
           ESP_LOGD("RfSniffer", "Loop running, checking for packets...");
-          this->radio_->dump_config();
           last_check = millis();
         }
 
