@@ -12,7 +12,8 @@ namespace esphome
     {
       if (this->radio_ != nullptr)
       {
-        // later do some setup thingies
+        // later: initialize sniffer mode in radio
+        this->radio_->set_promiscuous_mode(true);
       }
     }
 
@@ -30,6 +31,7 @@ namespace esphome
       if (this->radio_ != nullptr)
       {
         ESP_LOGCONFIG(TAG, "  Using radio component: RFM69x");
+        this->radio_->dump_config();
       }
       else
       {
