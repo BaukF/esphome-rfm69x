@@ -30,15 +30,20 @@ namespace esphome
 
     void RfSniffer::loop()
     {
+      static uint32_t last_check = 0;
+
       if (this->radio_ != nullptr)
       {
-        if (this->radio_ == nullptr)
-          return;
+        // Log every 5 seconds so we know loop is running
+        if (millis() - last_check > 5000)
+        {
+          ESP_LOGD("RfSniffer", "Loop running, checking for packets...");
+          last_check = millis();
+        }
 
-        // Check if packet is ready
         if (this->radio_->packet_available())
         {
-          ESP_LOGD("RfSniffer", "Packet detected!");
+          ESP_LOGW("RfSniffer", "*** PACKET DETECTED! ***");
         }
       }
     }
