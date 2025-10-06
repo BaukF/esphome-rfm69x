@@ -1,7 +1,7 @@
 #include <esphome/core/component.h>
 #include <esphome/core/log.h>
 #include "rf_sniffer.h"
-#include <esphome/components/rfm69x/rfm69x.h>
+#include "../rfm69x/rfm69x.h"
 
 namespace esphome
 {
@@ -14,6 +14,15 @@ namespace esphome
       {
         // later: initialize sniffer mode in radio
         this->radio_->set_promiscuous_mode(true);
+        this->radio_->set_frequency(868950000);
+        this->radio_->set_modulation(RFM69_FSK,
+                                     RFM69_PACKET_MODE,
+                                     RFM69_SHAPING_NONE);
+
+        this->radio_->set_bitrate(38400);
+        this->radio_->set_frequency_deviation(50000);
+
+        this->radio_->set_mode_rx();
       }
     }
 
@@ -21,7 +30,14 @@ namespace esphome
     {
       if (this->radio_ != nullptr)
       {
-        // later: poll packets
+        if (this->radio_ == nullptr)
+          return;
+
+        // Check if packet is ready
+        if (this->radio_->packet_available())
+        {
+          ESP_LOGD("RfSniffer", "Packet detected!");
+        }
       }
     }
 

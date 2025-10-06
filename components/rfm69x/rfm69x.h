@@ -9,6 +9,28 @@ namespace esphome
   namespace rfm69x
   {
 
+    // Add these BEFORE your class definition
+    enum RFM69Modulation
+    {
+      RFM69_FSK,
+      RFM69_OOK
+    };
+
+    enum RFM69DataMode
+    {
+      RFM69_PACKET_MODE,
+      RFM69_CONTINUOUS_SYNC,
+      RFM69_CONTINUOUS_NOSYNC
+    };
+
+    enum RFM69Shaping
+    {
+      RFM69_SHAPING_NONE,
+      RFM69_SHAPING_GAUSSIAN_BT_1_0,
+      RFM69_SHAPING_GAUSSIAN_BT_0_5,
+      RFM69_SHAPING_GAUSSIAN_BT_0_3
+    };
+
     class RFM69x : public Component,
                    public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST,
                                          spi::CLOCK_POLARITY_LOW,
@@ -23,9 +45,21 @@ namespace esphome
 
       // Enable/disable raw register values in any output that has raw codes (also see __init__.py)
       void set_raw_codes(bool raw) { this->raw_codes_ = raw; }
-      void set_reset_pin(InternalGPIOPin *reset_pin) { this->reset_pin_ = reset_pin; }
+      void set_reset_pin(InternalGPIOPin *reset_pin) { this->reset_pin_ = reset_pin; };
+      void set_bitrate(uint32_t bps);
       void set_frequency(uint32_t freq); // set frequency in MHz, e.g. 868000000
+      void set_modulation(RFM69Modulation mod,
+                          RFM69DataMode mode,
+                          RFM69Shaping shaping);
+
+      void set_frequency_deviation(uint32_t frequency_deviation);
+      void set_mode_rx() { set_mode_(OPMODE_RX); }
+      void set_mode_tx() { set_mode_(OPMODE_TX); }
       void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
+
+      // actual interaction with radio:
+      bool packet_available();
+      std::vector<uint8_t> read_packet();
 
     protected:
       // protected variables

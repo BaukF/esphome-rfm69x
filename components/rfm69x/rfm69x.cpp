@@ -96,6 +96,13 @@ namespace esphome
       }
     }
 
+    void RFM69x::set_bitrate(uint32_t bps)
+    {
+      uint16_t bitrate_reg = 32000000 / bps;
+      write_register_(REG_BITRATEMSB, (bitrate_reg >> 8) & 0xFF);
+      write_register_(REG_BITRATELSB, bitrate_reg & 0xFF);
+    }
+
     void RFM69x::set_frequency(uint32_t freq)
     {
       this->frequency_ = freq;
@@ -119,6 +126,34 @@ namespace esphome
 
       this->set_mode_(current_mode); // restore previous mode
     }
+
+    void RFM69x::set_frequency_deviation(uint32_t frequency_deviation)
+    {
+      uint16_t fdev_reg = ((uint64_t)frequency_deviation << 19) / 32000000;
+      write_register_(REG_FDEVMSB, (fdev_reg >> 8) & 0xFF);
+      write_register_(REG_FDEVLSB, fdev_reg & 0xFF);
+    }
+
+    // actual radio methods
+    bool RFM69x::packet_available()
+    {
+      uint8_t irq_flags = read_register_(REG_IRQFLAGS2);
+      return (irq_flags & IRQ2_PAYLOAD_READY) != 0;
+    }
+    /*(std::vector<uint8_t> RFM69x::read_packet()
+    {
+      /*std::vector<uint8_t> packet;
+
+      // Read payload length (first byte in FIFO for variable length packets)
+      uint8_t length = read_register(REG_FIFO);
+
+      // Read the actual data
+      for (uint8_t i = 0; i < length; i++)
+      {
+        packet.push_back(read_register(REG_FIFO));
+      }
+
+      return packet;}*/
 
     // start helper methods for rfm69x
     void RFM69x::configure_rfm69x()
@@ -175,6 +210,32 @@ namespace esphome
 
       uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
       return frf;
+    }
+
+    void RFM69x::set_modulation(RFM69Modulation mod,
+                                RFM69DataMode mode,
+                                RFM69Shaping shaping)
+    {
+      uint8_t reg_value = 0;
+
+      // Build register value from parameters
+      switch (mode)
+      {
+      case RFM69_PACKET_MODE:
+        reg_value |= DATAMODUL_PACKET_MODE;
+        break;
+      case RFM69_CONTINUOUS_SYNC:
+        reg_value |= DATAMODUL_CONTINUOUS_SYNC;
+        break;
+      case RFM69_CONTINUOUS_NOSYNC:
+        reg_value |= DATAMODUL_CONTINUOUS_NOSYNC;
+        break;
+      }
+
+      reg_value |= (mod == RFM69_FSK) ? DATAMODUL_FSK : DATAMODUL_OOK;
+      reg_value |= shaping; // Using the bit values directly
+
+      this->write_register_(REG_DATAMODUL, reg_value);
     }
 
     uint8_t RFM69x::read_register_(uint8_t addr)
