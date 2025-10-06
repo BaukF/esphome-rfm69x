@@ -48,7 +48,7 @@ namespace esphome
 
     void RFM69x::dump_config()
     {
-      ESP_LOGCONFIG(TAG, "RFM69x:");
+      /*ESP_LOGCONFIG(TAG, "RFM69x:");
       LOG_PIN("  CS Pin: ", this->cs_);
 
       if (this->detected_)
@@ -93,7 +93,102 @@ namespace esphome
       else
       {
         ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X), check SPI/MOSI/MISO/CS/wiring.", this->version_);
+      }*/
+
+      ESP_LOGCONFIG(TAG, "RFM69x:");
+      LOG_PIN("  CS Pin: ", this->cs_);
+
+      // Version check
+      uint8_t version = read_register_(REG_VERSION);
+      ESP_LOGCONFIG(TAG, "  Detected RFM69 [REG_VERSION=0x%02X], version=0x%02X", REG_VERSION, version);
+
+      // Operating Mode
+      uint8_t opmode = read_register_(REG_OPMODE);
+      const char *mode_str = "Unknown";
+      switch (opmode & OPMODE_MODE_MASK)
+      {
+      case OPMODE_SLEEP:
+        mode_str = "Sleep";
+        break;
+      case OPMODE_STANDBY:
+        mode_str = "Standby";
+        break;
+      case OPMODE_FS:
+        mode_str = "Frequency Synthesizer";
+        break;
+      case OPMODE_TX:
+        mode_str = "Transmit";
+        break;
+      case OPMODE_RX:
+        mode_str = "Receive";
+        break;
       }
+      ESP_LOGCONFIG(TAG, "  OPMODE: %s Mode [0x%02X]", mode_str, opmode);
+
+      // Frequency
+      uint8_t frf_msb = read_register_(REG_FRFMSB);
+      uint8_t frf_mid = read_register_(REG_FRFMID);
+      uint8_t frf_lsb = read_register_(REG_FRFLSB);
+      uint32_t frf = ((uint32_t)frf_msb << 16) | ((uint32_t)frf_mid << 8) | frf_lsb;
+      float freq_mhz = (frf * 32000000.0f) / (1 << 19) / 1000000.0f;
+      ESP_LOGCONFIG(TAG, "  Frequency: %.2f MHz [FRF=0x%06X]", freq_mhz, frf);
+
+      // Modulation
+      uint8_t datamodul = read_register_(REG_DATAMODUL);
+      const char *mod_type = (datamodul & DATAMODUL_OOK) ? "OOK" : "FSK";
+      const char *data_mode = "Packet";
+      if (datamodul & DATAMODUL_CONTINUOUS_NOSYNC)
+        data_mode = "Continuous (no sync)";
+      else if (datamodul & DATAMODUL_CONTINUOUS_SYNC)
+        data_mode = "Continuous (sync)";
+      ESP_LOGCONFIG(TAG, "  Modulation: %s, %s mode [0x%02X]", mod_type, data_mode, datamodul);
+
+      // Bitrate
+      uint8_t br_msb = read_register_(REG_BITRATEMSB);
+      uint8_t br_lsb = read_register_(REG_BITRATELSB);
+      uint16_t br_reg = ((uint16_t)br_msb << 8) | br_lsb;
+      uint32_t bitrate = 32000000 / br_reg;
+      ESP_LOGCONFIG(TAG, "  Bitrate: %u bps [0x%04X]", bitrate, br_reg);
+
+      // Frequency Deviation
+      uint8_t fdev_msb = read_register_(REG_FDEVMSB);
+      uint8_t fdev_lsb = read_register_(REG_FDEVLSB);
+      uint16_t fdev_reg = ((uint16_t)fdev_msb << 8) | fdev_lsb;
+      uint32_t fdev_hz = (fdev_reg * 32000000ULL) >> 19;
+      ESP_LOGCONFIG(TAG, "  Frequency Deviation: %u Hz [0x%04X]", fdev_hz, fdev_reg);
+
+      // RX Bandwidth
+      uint8_t rxbw = read_register_(REG_RXBW);
+      ESP_LOGCONFIG(TAG, "  RX Bandwidth: [0x%02X]", rxbw);
+
+      // PA Level
+      uint8_t palevel = read_register_(REG_PALEVEL);
+      ESP_LOGCONFIG(TAG, "  PA Level: %u [0x%02X]", palevel & PALEVEL_OUTPUT_POWER, palevel);
+
+      // RSSI
+      uint8_t rssi = read_register_(REG_RSSIVALUE);
+      ESP_LOGCONFIG(TAG, "  RSSI: %d dBm [0x%02X]", -(rssi / 2), rssi);
+
+      // IRQ Flags
+      uint8_t irq1 = read_register_(REG_IRQFLAGS1);
+      ESP_LOGCONFIG(TAG, "  IRQFLAGS1: %s%s%s%s [0x%02X]",
+                    (irq1 & IRQ1_MODEREADY) ? "ModeReady " : "",
+                    (irq1 & IRQ1_RXREADY) ? "RxReady " : "",
+                    (irq1 & IRQ1_TXREADY) ? "TxReady " : "",
+                    (irq1 & IRQ1_PLLLOCK) ? "PLLLock " : "",
+                    irq1);
+
+      uint8_t irq2 = read_register_(REG_IRQFLAGS2);
+      ESP_LOGCONFIG(TAG, "  IRQFLAGS2: %s%s%s [0x%02X]",
+                    (irq2 & IRQ2_FIFO_FULL) ? "FifoFull " : "",
+                    (irq2 & IRQ2_FIFO_NOT_EMPTY) ? "FifoNotEmpty " : "",
+                    (irq2 & IRQ2_PAYLOAD_READY) ? "PayloadReady " : "",
+                    irq2);
+
+      // Packet Config
+      uint8_t pkt_cfg1 = read_register_(REG_PACKETCONFIG1);
+      bool promiscuous = (pkt_cfg1 & 0x06) == 0; // Address filter disabled
+      ESP_LOGCONFIG(TAG, "  Promiscuous mode: %s [0x%02X]", promiscuous ? "Enabled" : "Disabled", pkt_cfg1);
     }
 
     void RFM69x::set_bitrate(uint32_t bps)
