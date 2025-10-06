@@ -22,6 +22,9 @@ namespace esphome
         this->radio_->set_bitrate(38400);
         this->radio_->set_frequency_deviation(50000);
         this->radio_->set_mode_rx();
+
+        ESP_LOGI("RfSniffer", "Radio configured, checking mode...");
+        delay(10); // Give it a moment to switch
       }
     }
 
