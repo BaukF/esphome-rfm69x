@@ -181,6 +181,11 @@ namespace esphome
         delay(2);
         this->reset_pin_->digital_write(true);
         delay(5); // wait 5 ms to stabilize
+
+        // Force clear Listen mode after reset
+        uint8_t opmode = this->read_register_(REG_OPMODE);
+        opmode &= ~(OPMODE_LISTEN_ON | OPMODE_LISTEN_ABORT);
+        this->write_register_(REG_OPMODE, opmode);
       }
       else
       {
