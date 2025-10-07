@@ -134,6 +134,20 @@ namespace esphome
       write_register_(REG_FDEVLSB, fdev_reg & 0xFF);
     }
 
+    void RFM69x::set_mode_rx()
+    {
+      this->set_mode_(OPMODE_STANDBY);
+      delay(10); // Wait for mode ready
+      this->set_mode_(OPMODE_RX);
+    }
+
+    void RFM69x::set_mode_tx()
+    {
+      this->set_mode_(OPMODE_STANDBY);
+      delay(10); // Wait for mode ready
+      this->set_mode_(OPMODE_TX);
+    }
+
     // actual radio methods
     bool RFM69x::packet_available()
     {
@@ -221,7 +235,7 @@ namespace esphome
     {
       uint8_t reg_value = 0;
 
-      // Build register value from parameters
+      // Data mode
       switch (mode)
       {
       case RFM69_PACKET_MODE:
@@ -235,8 +249,25 @@ namespace esphome
         break;
       }
 
+      // Modulation type
       reg_value |= (mod == RFM69_FSK) ? DATAMODUL_FSK : DATAMODUL_OOK;
-      reg_value |= shaping; // Using the bit values directly
+
+      // Shaping - now properly mapped
+      switch (shaping)
+      {
+      case RFM69_SHAPING_NONE:
+        reg_value |= DATAMODUL_SHAPING_NONE;
+        break;
+      case RFM69_SHAPING_GAUSSIAN_BT_1_0:
+        reg_value |= DATAMODUL_SHAPING_BT_1_0;
+        break;
+      case RFM69_SHAPING_GAUSSIAN_BT_0_5:
+        reg_value |= DATAMODUL_SHAPING_BT_0_5;
+        break;
+      case RFM69_SHAPING_GAUSSIAN_BT_0_3:
+        reg_value |= DATAMODUL_SHAPING_BT_0_3;
+        break;
+      }
 
       this->write_register_(REG_DATAMODUL, reg_value);
     }

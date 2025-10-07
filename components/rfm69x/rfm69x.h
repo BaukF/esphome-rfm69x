@@ -53,17 +53,15 @@ namespace esphome
                           RFM69Shaping shaping);
 
       void set_frequency_deviation(uint32_t frequency_deviation);
-      void set_mode_rx()
-      {
-        set_mode_(OPMODE_STANDBY);
-        delay(10); // Wait for mode ready
-        set_mode_(OPMODE_RX);
-      }
-      void set_mode_tx() { set_mode_(OPMODE_TX); }
+      void set_mode_rx();
+      void set_mode_tx();
       void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
 
       // actual interaction with radio:
       bool packet_available();
+      uint8_t get_rssi() { return read_register_(REG_RSSIVALUE); }
+      uint8_t get_irq_flags1() { return read_register_(REG_IRQFLAGS1); }
+      uint8_t get_irq_flags2() { return read_register_(REG_IRQFLAGS2); }
       std::vector<uint8_t> read_packet();
 
     protected:

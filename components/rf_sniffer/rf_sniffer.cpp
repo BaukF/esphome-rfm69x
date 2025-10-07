@@ -12,15 +12,33 @@ namespace esphome
     {
       if (this->radio_ != nullptr)
       {
+        /*
+        In https://github.com/arnemauer/Ducobox-ESPEasy-Plugin/blob/master/lib/Duco/DucoCC1101.cpp:
+        Base frequency		868.326447 MHz 		(868.294312 FREQ2-0 0x21 0x65 0x5C) / (868.292358 FREQ2-0 0x21 0x65 0x57)
+        Channel				0
+        Channel spacing		199.951172 kHz
+        Carrier frequency	868.326447 MHz  		(868.294312 FREQ2-0 0x21 0x65 0x5C) / (868.292358 FREQ2-0 0x21 0x65 0x57)
+        Xtal frequency		26.000000 MHz
+        Data rate			38.3835 kBaud
+        RX filter BW		101.562500 kHz
+        Manchester			disabled
+        Modulation			GFSK
+        Deviation			20.629883 kHz
+        TX power			0xC5,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+        PA ramping			disabled
+        Whitening			disabled
+        IF frequency 		(26000 / 2^10 ) * 6 = 152,34375 kHz
+        */
+
         // later: initialize sniffer mode in radio
         this->radio_->set_promiscuous_mode(true);
-        this->radio_->set_frequency(868950000);
-        this->radio_->set_modulation(RFM69_FSK,
-                                     RFM69_PACKET_MODE,
-                                     RFM69_SHAPING_NONE);
+        this->radio_->set_frequency(868326447);
+        this->radio_->set_modulation(rfm69x::RFM69_FSK,
+                                     rfm69x::RFM69_PACKET_MODE,
+                                     rfm69x::RFM69_SHAPING_GAUSSIAN_BT_0_5);
 
-        this->radio_->set_bitrate(38400);
-        this->radio_->set_frequency_deviation(50000);
+        this->radio_->set_bitrate(38384);
+        this->radio_->set_frequency_deviation(38384);
         this->radio_->set_mode_rx();
 
         ESP_LOGI("RfSniffer", "Radio configured, checking mode...");
@@ -34,11 +52,19 @@ namespace esphome
 
       if (this->radio_ != nullptr)
       {
-        // Log every 5 seconds so we know loop is running
-        if (millis() - last_check > 5000)
+        // Log every 30 seconds so we know loop is running
+        if (millis() - last_check > 30000)
         {
           ESP_LOGD("RfSniffer", "Loop running, checking for packets...");
-          last_check = millis();
+          // Read RSSI - this should change if remote is transmitting
+          uint8_t rssi = this->radio_->get_rssi();
+
+          // Read IRQ flags to see if radio sees anything
+          uint8_t irq1 = this->radio_->get_irq_flags1();
+          uint8_t irq2 = this->radio_->get_irq_flags2();
+
+          ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ1: 0x%02X, IRQ2: 0x%02X",
+                   rssi / 2, irq1, irq2);
         }
 
         if (this->radio_->packet_available())
@@ -54,8 +80,8 @@ namespace esphome
       if (this->radio_ != nullptr)
       {
         ESP_LOGCONFIG(TAG, "  Using radio component: RFM69x");
-
-        ESP_LOGCONFIG(TAG, "  let's see if promiscuous mode is set:");
+        ESP_LOGCONFIG(TAG, "  Radio configured for Duco protocol");
+        ESP_LOGCONFIG(TAG, "  Freq: 868.326447 MHz, Rate: 38.384 kBaud, Dev: 20.63 kHz");
         this->radio_->dump_config();
       }
       else

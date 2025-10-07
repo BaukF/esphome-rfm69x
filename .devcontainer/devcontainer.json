@@ -28,6 +28,8 @@
           "${workspaceFolder}/**",
           "/data/**",
           "/esphome/**",
+          "/root/.platformio/lib/",
+          "/root/.platformio/lib/**",
           "/pioenvs/**"
         ],
         "C_Cpp.errorSquiggles": "enabled"
