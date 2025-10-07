@@ -53,7 +53,12 @@ namespace esphome
                           RFM69Shaping shaping);
 
       void set_frequency_deviation(uint32_t frequency_deviation);
-      void set_mode_rx() { set_mode_(OPMODE_RX); }
+      void set_mode_rx()
+      {
+        set_mode_(OPMODE_STANDBY);
+        delay(10); // Wait for mode ready
+        set_mode_(OPMODE_RX);
+      }
       void set_mode_tx() { set_mode_(OPMODE_TX); }
       void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
 

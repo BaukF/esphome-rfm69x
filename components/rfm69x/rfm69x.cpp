@@ -181,11 +181,6 @@ namespace esphome
         delay(2);
         this->reset_pin_->digital_write(true);
         delay(5); // wait 5 ms to stabilize
-
-        // Force clear Listen mode after reset
-        uint8_t opmode = this->read_register_(REG_OPMODE);
-        opmode &= ~(OPMODE_LISTEN_ON | OPMODE_LISTEN_ABORT);
-        this->write_register_(REG_OPMODE, opmode);
       }
       else
       {
@@ -196,9 +191,18 @@ namespace esphome
     void RFM69x::set_mode_(uint8_t mode)
     {
       uint8_t opmode = this->read_register_(REG_OPMODE);
-      opmode = (opmode & 0x80) | mode; // Keep sequencer, replace everything else
+      opmode = (opmode & 0x80) | mode;
+
       this->write_register_(REG_OPMODE, opmode);
-      delay(5); // wait for mode change to take effect
+      delay(5);
+
+      // Verify the write
+      uint8_t readback = this->read_register_(REG_OPMODE);
+      if (readback != opmode)
+      {
+        ESP_LOGW(TAG, "Mode write failed! Tried to write 0x%02X, read back 0x%02X",
+                 opmode, readback);
+      }
     }
 
     uint32_t RFM69x::get_frequency_actual_()
