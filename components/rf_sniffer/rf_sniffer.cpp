@@ -57,14 +57,15 @@ namespace esphome
         {
           ESP_LOGD("RfSniffer", "Loop running, checking for packets...");
           // Read RSSI - this should change if remote is transmitting
-          //   uint8_t rssi = this->radio_->get_rssi();
+          uint8_t rssi = this->radio_->get_rssi();
 
           // Read IRQ flags to see if radio sees anything
-          // uint8_t irq1 = this->radio_->get_irq_flags1();
-          //          uint8_t irq2 = this->radio_->get_irq_flags2();
+          uint8_t irq1 = this->radio_->get_irq_flags1();
+          uint8_t irq2 = this->radio_->get_irq_flags2();
 
-          //        ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ1: 0x%02X, IRQ2: 0x%02X",
-          //               rssi / 2, irq1, irq2);
+          ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ1: 0x%02X, IRQ2: 0x%02X",
+                   rssi / 2, irq1, irq2);
+          last_check = millis();
         }
 
         if (this->radio_->packet_available())
