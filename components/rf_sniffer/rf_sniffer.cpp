@@ -73,6 +73,7 @@ namespace esphome
 
       // Set frequency
       this->radio_->set_frequency(current_freq);
+      this->radio_->set_mode_rx();
       delay(50); // Let it settle
 
       // Read RSSI
