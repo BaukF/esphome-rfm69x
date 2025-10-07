@@ -32,7 +32,8 @@ namespace esphome
 
         // later: initialize sniffer mode in radio
         this->radio_->set_promiscuous_mode(true);
-        this->radio_->set_frequency(868326447);
+        // this->radio_->set_frequency(868326447); // Ducomented by Arne, will not work for mine
+        this->radio_->set_frequency(868400000); // My DucoBox is at 868.400 MHz
         this->radio_->set_modulation(rfm69x::RFM69_FSK,
                                      rfm69x::RFM69_PACKET_MODE,
                                      rfm69x::RFM69_SHAPING_GAUSSIAN_BT_0_5);
@@ -107,23 +108,27 @@ namespace esphome
       if (this->radio_ == nullptr)
         return;
 
-      if (this->scanning_mode_)
+      if (false && this->scanning_mode_)
       {
         scan_frequencies();
       }
       else
       {
-        // Normal packet detection (your existing code)
+        //
         static uint32_t last_check = 0;
         if (millis() - last_check > 1000)
         {
-          // ... your existing logging ...
+          uint8_t rssi = this->radio_->get_rssi();
+          uint8_t irq2 = this->radio_->get_irq_flags2();
+
+          ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ2: 0x%02X", rssi / 2, irq2);
           last_check = millis();
         }
 
         if (this->radio_->packet_available())
         {
-          ESP_LOGW(TAG, "*** PACKET DETECTED! ***");
+          ESP_LOGW("RfSniffer", "*** PACKET DETECTED! ***");
+          // TODO: Read and display packet data
         }
       }
     }
