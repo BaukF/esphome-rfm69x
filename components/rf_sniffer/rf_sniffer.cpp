@@ -38,7 +38,16 @@ namespace esphome
                                      rfm69x::RFM69_SHAPING_GAUSSIAN_BT_0_5);
 
         this->radio_->set_bitrate(38384);
-        this->radio_->set_frequency_deviation(38384);
+        this->radio_->set_frequency_deviation(20630);
+
+        // Configure Duco sync word
+        std::vector<uint8_t> duco_sync = {0xD3, 0x91};
+        this->radio_->set_sync_word(duco_sync);
+
+        // Configure packet format
+        this->radio_->set_variable_length_mode(true);
+        this->radio_->set_packet_length(32); // Max length
+
         this->radio_->set_mode_rx();
 
         ESP_LOGI("RfSniffer", "Radio configured, checking mode...");

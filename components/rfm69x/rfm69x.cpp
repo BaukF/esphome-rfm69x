@@ -148,6 +148,58 @@ namespace esphome
       this->set_mode_(OPMODE_TX);
     }
 
+    void RFM69x::set_sync_word(const std::vector<uint8_t> &sync_word)
+    {
+      if (sync_word.empty() || sync_word.size() > 8)
+      {
+        ESP_LOGE(TAG, "Invalid sync word length: %d (must be 1-8)", sync_word.size());
+        return;
+      }
+
+      // REG_SYNCCONFIG (0x2E)
+      // Bit 7: SyncOn (1 = enabled)
+      // Bit 6: FifoFillCondition (0 = if sync word seen)
+      // Bits 5-4: SyncSize (sync word length - 1)
+      // Bits 3-0: SyncTol (bit errors tolerated, 0 = no errors)
+
+      uint8_t sync_config = 0x80;                   // Enable sync
+      sync_config |= ((sync_word.size() - 1) << 3); // Set sync size
+      // sync_config |= 0x00;  // No bit errors tolerated (optional: add tolerance)
+
+      this->write_register_(REG_SYNCCONFIG, sync_config);
+
+      // Write sync bytes to SYNCVALUE1..SYNCVALUE8
+      for (size_t i = 0; i < sync_word.size(); i++)
+      {
+        this->write_register_(REG_SYNCVALUE1 + i, sync_word[i]);
+      }
+
+      ESP_LOGI(TAG, "Configured sync word: %d bytes", sync_word.size());
+    }
+
+    void RFM69x::set_packet_length(uint8_t length)
+    {
+      this->write_register_(REG_PAYLOADLENGTH, length);
+      ESP_LOGI(TAG, "Set packet length: %d bytes", length);
+    }
+
+    void RFM69x::set_variable_length_mode(bool variable)
+    {
+      uint8_t config = this->read_register_(REG_PACKETCONFIG1);
+
+      if (variable)
+      {
+        config |= PACKET1_FORMAT_VARIABLE; // Set bit 7
+      }
+      else
+      {
+        config &= ~PACKET1_FORMAT_VARIABLE; // Clear bit 7
+      }
+
+      this->write_register_(REG_PACKETCONFIG1, config);
+      ESP_LOGI(TAG, "Variable length mode: %s", variable ? "enabled" : "disabled");
+    }
+
     // actual radio methods
     bool RFM69x::packet_available()
     {
