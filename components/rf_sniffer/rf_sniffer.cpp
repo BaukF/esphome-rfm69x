@@ -39,6 +39,7 @@ namespace esphome
 
         this->radio_->set_bitrate(38384);
         this->radio_->set_frequency_deviation(20630);
+        this->radio_->set_rx_bandwidth(100000);
 
         // Configure Duco sync word
         std::vector<uint8_t> duco_sync = {0xD3, 0x91};

@@ -148,6 +148,25 @@ namespace esphome
       this->set_mode_(OPMODE_TX);
     }
 
+    void RFM69x::set_rx_bandwidth(uint32_t bandwidth)
+    {
+      // RX BW register calculation for RFM69
+      // Target: 101.5625 kHz per Arne's data
+      // REG_RXBW format: bits [7:5] DccFreq, bits [4:3] RxBwMant, bits [2:0] RxBwExp
+
+      // For ~100 kHz: Mant=16 (0b10), Exp=2 (0b010)
+      // This gives: BW = F_XOSC / (RxBwMant * 2^(RxBwExp + 2))
+      //           = 32MHz / (16 * 2^4) = 32MHz / 256 = 125 kHz
+
+      // For closer to 101.5625: Mant=20 (0b01), Exp=2
+      //           = 32MHz / (20 * 2^4) = 32MHz / 320 = 100 kHz ✓
+
+      uint8_t reg_value = 0x42; // DccFreq=010, Mant=01 (20), Exp=010 (2)
+      this->write_register_(REG_RXBW, reg_value);
+
+      ESP_LOGI(TAG, "Set RX bandwidth: ~100 kHz [REG_RXBW=0x%02X]", reg_value);
+    }
+
     void RFM69x::set_sync_word(const std::vector<uint8_t> &sync_word)
     {
       if (sync_word.empty() || sync_word.size() > 8)

@@ -56,6 +56,7 @@ namespace esphome
       void set_mode_rx();
       void set_mode_tx();
       void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
+      void set_rx_bandwidth(uint32_t bandwidth);
       void set_sync_word(const std::vector<uint8_t> &sync_word);
       void set_sync_word(uint8_t *sync_bytes, uint8_t length);
       void set_packet_length(uint8_t length);
