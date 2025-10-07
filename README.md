@@ -25,7 +25,7 @@ This repository is evolving from a monolithic Duco-specific implementation to a 
 ### Migration Plan
 
 1. **Phase 1**: Refactor current code to separate RFM69x radio operations from Duco protocol logic
-2. **Phase 2**: Create `esphome-duco` repository for protocol-specific implementation  
+2. **Phase 2**: Create `esphome-duco` repository for protocol-specific implementation
 3. **Phase 3**: Establish common interfaces to enable support for additional radio chips and transport methods
 
 ### Future Ecosystem
@@ -33,7 +33,7 @@ This repository is evolving from a monolithic Duco-specific implementation to a 
 ```
 Radio Components:                Protocol Components:
 ├── esphome-rfm69x              ├── esphome-duco
-├── esphome-cc1101              ├── esphome-mysensors  
+├── esphome-cc1101              ├── esphome-mysensors
 └── esphome-sx127x (extended)   └── esphome-[protocol]
 ```
 
@@ -46,7 +46,7 @@ Users will be able to mix and match radio hardware with protocols based on their
 
 ---
 ## First comment when this repo was still called esphome-rfm69-duco
-In order to create a non invasive communication/connection solution to my Duco Ventition system, I am in the process of creating a esphome based solution. 
+In order to create a non invasive communication/connection solution to my Duco Ventition system, I am in the process of creating a esphome based solution.
 
 It uses two (later 3) technical parts to get it to work. First, we have the ESP32 platform that allows for interfacing and connection to (a) home assistant implementation, if preferred. I may consider some autonomous functions, but first lets see if we can get som basics going.
 For the 868MHz communications I've decided to work with a RFM69w module (low power variant). In my research, I found that the libs would enable me to move away from difficult radio intrinsics and focus on the data and the Duco Box itself.
@@ -57,18 +57,18 @@ In the future, I hope to create a serial connection to read values such as volta
 ESP32-devkit-1
 HopeRF RFM69w
 
-wiring:
-| ESP32 Pin  | RFM69W Pin                  |
-| ---------- | --------------------------- |
-| **3V3**    | VCC (RFM69W is 3.3 V only!) |
-| **GND**    | GND                         |
-| **GPIO18** | SCK (CLK)                   |
-| **GPIO23** | MOSI                        |
-| **GPIO19** | MISO                        |
-| **GPIO5**  | NSS / CS                    |
-| **GPIO4**  | DIO0                        |
-| **GPIO16** | RESET                       |
+### wiring:
 
+                         ┌──────────────────────┐
+                   NC    │ ●                  ● │  RST --- GPIO 14 -- D14
+  D5 -- GPIO 5 --- NSS   │ ●      ●    ●      ● │ DIO0 --- GPIO 26 -- D26
+D23 -- GPIO 23 --- MOSI  │ ●                  ● │ DIO1
+D19 -- GPIO 19 --- MISO  │ ●                  ● │ DIO2
+D18 -- GPIO 18 --- SCK   │ ●                  ● │ DIO3
+                   GND   │ ●                  ● │ DIO4
+                   ANA   │ ●                  ● │ DIO5
+           GND --- GND   │ ●                  ● │ 3.3V ----  3.3v
+                         └──────────────────────┘
 
 ## About
 This is my autoddidactically challenging project of transforming the interesting work at the project https://github.com/arnemauer/Ducobox-ESPEasy-Plugin into ESPHome.
@@ -91,7 +91,7 @@ I have extremely basic programming skills and am using all that is at my disposa
 - [x] Get bare minimum SPI component working
   - [x] Get the SPI bus talking and return value from FRFM, using loop as delayed log output (v0.1)
   - [x] Get the module working through the correct setup() function
-  - [x] Consider test and try interactions with chip 
+  - [x] Consider test and try interactions with chip
     - [x] write: REG_OPMODE, 0x00
     - [x] write: REG_FRFMSB, 0xD9
     - [x] write: REG_FRFMID, 0x00
