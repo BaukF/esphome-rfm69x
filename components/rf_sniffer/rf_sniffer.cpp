@@ -62,7 +62,7 @@ namespace esphome
       if (this->radio_ != nullptr)
       {
         // Log every 30 seconds so we know loop is running
-        if (millis() - last_check > 30000)
+        if (millis() - last_check > 1000)
         {
           ESP_LOGD("RfSniffer", "Loop running, checking for packets...");
           // Read RSSI - this should change if remote is transmitting
@@ -76,6 +76,23 @@ namespace esphome
                    rssi / 2, irq1, irq2);
           last_check = millis();
         }
+
+        /*
+          static uint8_t last_rssi = 0;
+          static uint8_t last_irq2 = 0;
+
+          uint8_t rssi = this->radio_->get_rssi();
+          uint8_t irq2 = this->radio_->get_irq_flags2();
+
+          // Only log if something changed
+          if (rssi != last_rssi || irq2 != last_irq2)
+          {
+            ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ2: 0x%02X", rssi / 2, irq2);
+            last_rssi = rssi;
+            last_irq2 = irq2;
+          }
+
+        */
 
         if (this->radio_->packet_available())
         {
