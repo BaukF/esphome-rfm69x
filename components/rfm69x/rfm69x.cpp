@@ -191,9 +191,8 @@ namespace esphome
     void RFM69x::set_mode_(uint8_t mode)
     {
       uint8_t opmode = this->read_register_(REG_OPMODE);
-      opmode = (opmode & ~OPMODE_MODE_MASK) | mode;
+      opmode = (opmode & 0x80) | mode; // Keep sequencer, replace everything else
       this->write_register_(REG_OPMODE, opmode);
-
       delay(5); // wait for mode change to take effect
     }
 
