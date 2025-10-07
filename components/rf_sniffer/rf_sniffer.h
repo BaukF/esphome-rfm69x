@@ -24,10 +24,13 @@ namespace esphome
             void setup() override;
             void loop() override;
             void dump_config() override;
+            void scan_frequencies();
             void set_radio(rfm69x::RFM69x *radio);
 
         private:
             rfm69x::RFM69x *radio_{nullptr};
+            bool scanning_mode_{true}; // Start in scan mode
+            uint32_t scan_frequency_{868000000};
             // rfm69x::RFM69x *rfm69x_radio_{nullptr};
             // cc1101::CC1101 *cc1101_radio_{nullptr};
         };

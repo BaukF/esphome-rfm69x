@@ -55,48 +55,73 @@ namespace esphome
       }
     }
 
+    void RfSniffer::scan_frequencies()
+    {
+      // Scan from 868.0 to 869.0 MHz in 100 kHz steps
+      const uint32_t START_FREQ = 868000000;
+      const uint32_t END_FREQ = 869000000;
+      const uint32_t STEP = 100000; // 100 kHz steps
+
+      static uint32_t last_scan = 0;
+      static uint32_t current_freq = START_FREQ;
+
+      // Scan every 100ms
+      if (millis() - last_scan < 100)
+        return;
+
+      last_scan = millis();
+
+      // Set frequency
+      this->radio_->set_frequency(current_freq);
+      delay(50); // Let it settle
+
+      // Read RSSI
+      uint8_t rssi = this->radio_->get_rssi();
+      int16_t rssi_dbm = -(rssi / 2);
+
+      // Log if we see activity (threshold: > -100 dBm)
+      if (rssi_dbm > -100)
+      {
+        ESP_LOGW(TAG, "*** ACTIVITY at %.3f MHz: RSSI = %d dBm ***",
+                 current_freq / 1e6, rssi_dbm);
+      }
+      else
+      {
+        ESP_LOGD(TAG, "Scanning %.3f MHz: %d dBm",
+                 current_freq / 1e6, rssi_dbm);
+      }
+
+      // Next frequency
+      current_freq += STEP;
+      if (current_freq > END_FREQ)
+      {
+        current_freq = START_FREQ;
+        ESP_LOGI("RfSniffer", "--- Scan cycle complete ---");
+      }
+    }
+
     void RfSniffer::loop()
     {
-      static uint32_t last_check = 0;
+      if (this->radio_ == nullptr)
+        return;
 
-      if (this->radio_ != nullptr)
+      if (this->scanning_mode_)
       {
-        // Log every 30 seconds so we know loop is running
+        scan_frequencies();
+      }
+      else
+      {
+        // Normal packet detection (your existing code)
+        static uint32_t last_check = 0;
         if (millis() - last_check > 1000)
         {
-          ESP_LOGD("RfSniffer", "Loop running, checking for packets...");
-          // Read RSSI - this should change if remote is transmitting
-          uint8_t rssi = this->radio_->get_rssi();
-
-          // Read IRQ flags to see if radio sees anything
-          uint8_t irq1 = this->radio_->get_irq_flags1();
-          uint8_t irq2 = this->radio_->get_irq_flags2();
-
-          ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ1: 0x%02X, IRQ2: 0x%02X",
-                   rssi / 2, irq1, irq2);
+          // ... your existing logging ...
           last_check = millis();
         }
 
-        /*
-          static uint8_t last_rssi = 0;
-          static uint8_t last_irq2 = 0;
-
-          uint8_t rssi = this->radio_->get_rssi();
-          uint8_t irq2 = this->radio_->get_irq_flags2();
-
-          // Only log if something changed
-          if (rssi != last_rssi || irq2 != last_irq2)
-          {
-            ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ2: 0x%02X", rssi / 2, irq2);
-            last_rssi = rssi;
-            last_irq2 = irq2;
-          }
-
-        */
-
         if (this->radio_->packet_available())
         {
-          ESP_LOGW("RfSniffer", "*** PACKET DETECTED! ***");
+          ESP_LOGW(TAG, "*** PACKET DETECTED! ***");
         }
       }
     }
