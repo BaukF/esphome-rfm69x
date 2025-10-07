@@ -58,18 +58,18 @@ ESP32-devkit-1
 HopeRF RFM69w
 
 ### wiring:
-
-                         ┌──────────────────────┐
-                   NC    │ ●                  ● │  RST --- GPIO 14 -- D14
-  D5 -- GPIO 5 --- NSS   │ ●      ●    ●      ● │ DIO0 --- GPIO 26 -- D26
-D23 -- GPIO 23 --- MOSI  │ ●                  ● │ DIO1
-D19 -- GPIO 19 --- MISO  │ ●                  ● │ DIO2
-D18 -- GPIO 18 --- SCK   │ ●                  ● │ DIO3
-                   GND   │ ●                  ● │ DIO4
-                   ANA   │ ●                  ● │ DIO5
-           GND --- GND   │ ●                  ● │ 3.3V ----  3.3v
-                         └──────────────────────┘
-
+```
+                             ┌──────────────────────┐
+                       NC    │ ●                  ● │  RST --- GPIO 14 -- D14
+      D5 -- GPIO 5 --- NSS   │ ●      ●    ●      ● │ DIO0 --- GPIO 26 -- D26
+    D23 -- GPIO 23 --- MOSI  │ ●                  ● │ DIO1
+    D19 -- GPIO 19 --- MISO  │ ●                  ● │ DIO2  
+    D18 -- GPIO 18 --- SCK   │ ●                  ● │ DIO3
+                       GND   │ ●                  ● │ DIO4
+                       ANA   │ ●                  ● │ DIO5
+               GND --- GND   │ ●                  ● │ 3.3V ----  3.3v
+                             └──────────────────────┘
+```
 ## About
 This is my autoddidactically challenging project of transforming the interesting work at the project https://github.com/arnemauer/Ducobox-ESPEasy-Plugin into ESPHome.
 
