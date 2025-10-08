@@ -59,22 +59,22 @@ namespace esphome
 
     void RfSniffer::scan_frequencies()
     {
-      // Scan from 868.0 to 869.0 MHz in 100 kHz steps
-      const uint32_t START_FREQ = 868000000;
-      const uint32_t END_FREQ = 869000000;
-      const uint32_t STEP = 100000; // 100 kHz steps
-
-      static uint32_t last_scan = 0;
-      static uint32_t current_freq = START_FREQ;
+      // Heartbeat for scanning mode
+      if (millis() - last_heartbeat_ > 30000)
+      {
+        ESP_LOGI(TAG, "Scanning frequencies from %.3f MHz to %.3f MHz in %.1f kHz steps",
+                 START_FREQ / 1e6, END_FREQ / 1e6, STEP / 1e3);
+        last_heartbeat_ = millis();
+      }
 
       // Scan every 100ms
-      if (millis() - last_scan < 100)
+      if (millis() - last_scan_ < 100)
         return;
 
-      last_scan = millis();
+      last_scan_ = millis();
 
       // Set frequency
-      this->radio_->set_frequency(current_freq);
+      this->radio_->set_frequency(current_freq_);
       this->radio_->set_mode_rx();
       delay(50); // Let it settle
 
@@ -86,20 +86,68 @@ namespace esphome
       if (rssi_dbm > -100)
       {
         ESP_LOGW(TAG, "*** ACTIVITY at %.3f MHz: RSSI = %d dBm ***",
-                 current_freq / 1e6, rssi_dbm);
+                 current_freq_ / 1e6, rssi_dbm);
       }
       else
       {
         ESP_LOGD(TAG, "Scanning %.3f MHz: %d dBm",
-                 current_freq / 1e6, rssi_dbm);
+                 current_freq_ / 1e6, rssi_dbm);
       }
 
       // Next frequency
-      current_freq += STEP;
-      if (current_freq > END_FREQ)
+      current_freq_ += STEP;
+      if (current_freq_ > END_FREQ)
+        current_freq_ = START_FREQ;
+    }
+
+    void RfSniffer::monitor_frequency()
+    {
+      // Heartbeat for monitoring mode
+      if (millis() - last_heartbeat_ > 30000)
       {
-        current_freq = START_FREQ;
-        ESP_LOGI("RfSniffer", "--- Scan cycle complete ---");
+        if (first_packet_detected_)
+        {
+          int avg = calculate_filtered_average_rssi_();
+          ESP_LOGI(TAG, "📡 Monitoring %.3f MHz | Packets: %u | Avg RSSI: %d dBm",
+                   current_freq_ / 1e6, packet_count_, avg);
+        }
+        else
+        {
+          ESP_LOGI(TAG, "🔍 Monitoring %.3f MHz... (no packets yet)",
+                   current_freq_ / 1e6);
+        }
+        last_heartbeat_ = millis();
+      }
+
+      // Check for packets
+      if (this->radio_->packet_available())
+      {
+        // Read RSSI when packet arrives
+        int current_rssi = this->radio_->get_rssi();
+
+        // Update history
+        update_rssi_history_(current_rssi);
+
+        // Check for significant changes
+        if (is_significant_drop_(current_rssi))
+        {
+          int avg = calculate_filtered_average_rssi_();
+          ESP_LOGW(TAG, "⚠️ Signal dropped! Current: %d dBm, Avg: %d dBm (-%d dB)",
+                   current_rssi, avg, avg - current_rssi);
+        }
+
+        // First packet detection
+        if (!first_packet_detected_)
+        {
+          ESP_LOGI(TAG, "🎯 First packet detected! RSSI: %d dBm", current_rssi);
+          first_packet_detected_ = true;
+        }
+
+        ESP_LOGW(TAG, "*** PACKET DETECTED! RSSI: %d dBm ***", current_rssi);
+        packet_count_++;
+
+        // TODO: Read and display packet data
+        // auto packet = this->radio_->read_packet();
       }
     }
 
@@ -108,28 +156,13 @@ namespace esphome
       if (this->radio_ == nullptr)
         return;
 
-      if (false && this->scanning_mode_)
+      if (this->scanning_mode_)
       {
         scan_frequencies();
       }
       else
       {
-        //
-        static uint32_t last_check = 0;
-        if (millis() - last_check > 1000)
-        {
-          uint8_t rssi = this->radio_->get_rssi();
-          uint8_t irq2 = this->radio_->get_irq_flags2();
-
-          ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ2: 0x%02X", rssi / 2, irq2);
-          last_check = millis();
-        }
-
-        if (this->radio_->packet_available())
-        {
-          ESP_LOGW("RfSniffer", "*** PACKET DETECTED! ***");
-          // TODO: Read and display packet data
-        }
+        monitor_frequency();
       }
     }
 
@@ -158,5 +191,53 @@ namespace esphome
       this->radio_ = (rfm69x::RFM69x *)(radio);
     }
 
+    int RfSniffer::calculate_filtered_average_rssi_()
+    {
+      if (rssi_history_.empty())
+        return 0;
+
+      // Step 1: Get median (more robust than mean)
+      std::vector<int> sorted(rssi_history_.begin(), rssi_history_.end());
+      std::sort(sorted.begin(), sorted.end());
+      int median = sorted[sorted.size() / 2];
+
+      // Step 2: Average only values within ±10 dB of median
+      int sum = 0;
+      int count = 0;
+      for (int rssi : rssi_history_)
+      {
+        if (abs(rssi - median) <= NORMAL_FLUCTUATION)
+        {
+          sum += rssi;
+          count++;
+        }
+      }
+
+      return count > 0 ? sum / count : median;
+    }
+
+    bool RfSniffer::is_significant_drop_(int current_rssi)
+    {
+
+      if (rssi_history_.size() < 5)
+      {
+        return false; // Need baseline first
+      }
+
+      int avg = calculate_filtered_average_rssi_();
+      int drop = avg - current_rssi; // Positive = signal weaker
+
+      return drop > SIGNIFICANT_DROP;
+    }
+
+    void RfSniffer::update_rssi_history_(int rssi)
+    {
+      rssi_history_.push_back(rssi);
+
+      if (rssi_history_.size() > MAX_HISTORY)
+      {
+        rssi_history_.pop_front(); // Remove oldest
+      }
+    }
   } // namespace rf_sniffer
 } // namespace esphome

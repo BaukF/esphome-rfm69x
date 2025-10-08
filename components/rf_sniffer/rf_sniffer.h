@@ -29,10 +29,31 @@ namespace esphome
 
         private:
             rfm69x::RFM69x *radio_{nullptr};
-            bool scanning_mode_{true}; // Start in scan mode
-            uint32_t scan_frequency_{868000000};
-            // rfm69x::RFM69x *rfm69x_radio_{nullptr};
-            // cc1101::CC1101 *cc1101_radio_{nullptr};
+            bool scanning_mode_{true}; // Make this configurable
+
+            // Scanning mode variables
+            uint32_t last_scan_{0};
+            uint32_t current_freq_{868000000};
+
+            // Monitoring mode variables
+            bool first_packet_detected_{false};
+            void monitor_frequency();
+            void update_rssi_history_(int rssi);
+            bool is_significant_drop_(int current_rssi);
+            int calculate_filtered_average_rssi_();
+            uint32_t packet_count_{0};
+            std::deque<int> rssi_history_;
+
+            // Shared
+            uint32_t last_heartbeat_{0};
+
+            static constexpr size_t MAX_HISTORY = 25;
+            static constexpr int NORMAL_FLUCTUATION = 10;
+            static constexpr int SIGNIFICANT_DROP = 15;
+            static constexpr uint32_t START_FREQ = 868000000;
+            static constexpr uint32_t END_FREQ = 869000000;
+            static constexpr uint32_t STEP = 100000;
         };
+
     } // namespace rf_sniffer
 } // namespace esphome
