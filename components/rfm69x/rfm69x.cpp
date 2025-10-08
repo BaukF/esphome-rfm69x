@@ -22,6 +22,7 @@ namespace esphome
 
       // Prepare SPI
       this->spi_setup();
+      delay(100);
 
       this->reset_rfm69x();
       this->configure_rfm69x();
