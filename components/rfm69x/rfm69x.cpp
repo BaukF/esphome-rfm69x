@@ -122,9 +122,6 @@ namespace esphome
       this->write_register_(REG_FRFMSB, (uint8_t)(frf >> 16));
       this->write_register_(REG_FRFMID, (uint8_t)(frf >> 8));
       this->write_register_(REG_FRFLSB, (uint8_t)(frf));
-
-      ESP_LOGI(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
-               this->frequency_ / 1e6, frf);
     }
 
     void RFM69x::set_frequency_deviation(uint32_t frequency_deviation)
