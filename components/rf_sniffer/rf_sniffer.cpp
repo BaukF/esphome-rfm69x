@@ -88,11 +88,6 @@ namespace esphome
         ESP_LOGW(TAG, "*** ACTIVITY at %.3f MHz: RSSI = %d dBm ***",
                  current_freq_ / 1e6, rssi_dbm);
       }
-      else
-      {
-        ESP_LOGD(TAG, "Scanning %.3f MHz: %d dBm",
-                 current_freq_ / 1e6, rssi_dbm);
-      }
 
       // Next frequency
       current_freq_ += STEP;
