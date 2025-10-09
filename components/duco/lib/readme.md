@@ -4,4 +4,4 @@ https://raw.githubusercontent.com/arnemauer/Ducobox-ESPEasy-Plugin/refs/heads/ma
 and
 https://raw.githubusercontent.com/arnemauer/Ducobox-ESPEasy-Plugin/refs/heads/master/lib/Duco/DucoCC1101.cpp
 
-I will be eternally gratefol when I've managed to create a duco-core.h file or whatever I name I think of. It's all wip.
+I will be eternally grateful when I've managed to create a duco-core.h file or whatever I name I think of. It's all wip.
