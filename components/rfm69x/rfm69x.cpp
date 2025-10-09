@@ -49,7 +49,7 @@ namespace esphome
     void RFM69x::loop()
     {
       // No continuous work yet.
-      // Later: youll poll status or handle RadioLib here.
+      // Later: you'll poll status or handle RadioLib here.
     }
 
     void RFM69x::dump_config()
@@ -249,13 +249,16 @@ namespace esphome
       this->disable();
     }
 
-    void RFM69x::set_pa_level(uint8_t level)
+    // Power level 0-31: 0 = -18dBm, 31 = +13dBm (RFM69CW/HCW)
+    // TODO: Add support for PA Boost (PA1+PA2) for +20dBm
+    // TODO: add method to read current power level
+    void RFM69x::set_power_level(uint8_t level)
     {
       uint8_t val = level & 0x1F; // PA level is 5 bits
       this->enable();
       this->write_register_raw_(REG_PALEVEL, val);
       this->disable();
-      ESP_LOGI(TAG, "Set PA level: %u", val);
+      ESP_LOGD(TAG, "Set PA level: %u", val);
     }
 
     void RFM69x::set_rx_bandwidth(uint32_t bandwidth)

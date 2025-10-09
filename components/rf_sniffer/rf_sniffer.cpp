@@ -31,7 +31,7 @@ namespace esphome
         */
 
         // later: initialize sniffer mode in radio
-        this->radio_->set_promiscuous_mode(true);
+        this->radio_->set_promiscuous_mode(true); 
         // this->radio_->set_frequency(868326447); // Ducomented by Arne, will not work for mine
         this->radio_->set_frequency(868400000); // My DucoBox is at 868.400 MHz
         this->radio_->set_modulation(rfm69x::RFM69_FSK,
@@ -41,6 +41,7 @@ namespace esphome
         this->radio_->set_bitrate(38384);
         this->radio_->set_frequency_deviation(20630);
         this->radio_->set_rx_bandwidth(100000);
+        this->radio_->set_power_level(0); // disable
 
         // Configure Duco sync word
         std::vector<uint8_t> duco_sync = {0xD3, 0x91};

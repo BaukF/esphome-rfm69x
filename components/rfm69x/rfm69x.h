@@ -58,7 +58,7 @@ namespace esphome
                           RFM69DataMode mode,
                           RFM69Shaping shaping);
       void set_bitrate(uint32_t bps);
-      void set_pa_level(uint8_t level); // 0-31
+      void set_power_level(uint8_t level); // 0-31
       void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
       void set_rx_bandwidth(uint32_t bandwidth);
       void set_sync_word(const std::vector<uint8_t> &sync_word);
