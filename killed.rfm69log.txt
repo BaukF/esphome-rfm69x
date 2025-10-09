@@ -1,0 +1,129 @@
+INFO Upload took 5.95 seconds, waiting for result...
+INFO OTA successful
+INFO Successfully uploaded program.
+INFO Starting log output from 172.16.50.48 using esphome API
+INFO Successfully resolved rfm69x-sample @ 172.16.50.48 in 0.000s
+INFO Trying to connect to rfm69x-sample @ 172.16.50.48 in the background
+INFO Successfully resolved rfm69x-sample @ 172.16.50.48 in 0.000s
+INFO Successfully connected to rfm69x-sample @ 172.16.50.48 in 0.041s
+INFO Successful handshake with rfm69x-sample @ 172.16.50.48 in 0.243s
+[22:06:08.100][I][app:185]: ESPHome version 2025.9.3 compiled on Oct  8 2025, 22:04:12
+[22:06:08.100][C][wifi:661]: WiFi:
+[22:06:08.113][C][wifi:444]:   Local MAC: 88:13:BF:01:25:D0
+[22:06:08.114][C][wifi:449]:   SSID: 'mordor-iot'[redacted]
+[22:06:08.114][C][wifi:452]:   IP Address: 172.16.50.48
+[22:06:08.114][C][wifi:456]:   BSSID: F6:92:BF:91:06:F1[redacted]
+[22:06:08.114][C][wifi:456]:   Hostname: 'rfm69x-sample'
+[22:06:08.114][C][wifi:456]:   Signal strength: -60 dB ▂▄▆█
+[22:06:08.118][C][wifi:467]:   Channel: 6
+[22:06:08.118][C][wifi:467]:   Subnet: 255.255.255.0
+[22:06:08.118][C][wifi:467]:   Gateway: 172.16.50.1
+[22:06:08.118][C][wifi:467]:   DNS1: 172.16.50.1
+[22:06:08.118][C][wifi:467]:   DNS2: 0.0.0.0
+[22:06:08.129][I][rfm69x.component:126]: Configured frequency: 868.10 MHz [FRF=0xD90666]
+[22:06:08.203][C][logger:273]: Logger:
+[22:06:08.203][C][logger:273]:   Max Level: DEBUG
+[22:06:08.203][C][logger:273]:   Initial Level: DEBUG
+[22:06:08.209][C][logger:279]:   Log Baud Rate: 115200
+[22:06:08.209][C][logger:279]:   Hardware UART: UART0
+[22:06:08.212][C][logger:286]:   Task Log Buffer Size: 768
+[22:06:08.218][C][spi:067]: SPI bus:
+[22:06:08.221][C][spi:068]:   CLK Pin: GPIO18
+[22:06:08.225][C][spi:069]:   SDI Pin: GPIO19
+[22:06:08.230][C][spi:070]:   SDO Pin: GPIO23
+[22:06:08.234][C][spi:075]:   Using HW SPI: SPI2_HOST
+[22:06:08.244][I][rfm69x.component:126]: Configured frequency: 868.20 MHz [FRF=0xD90CCC]
+[22:06:08.334][C][rfm69x.component:053]: RFM69x:
+[22:06:08.337][C][rfm69x.component:054]:   CS Pin: GPIO5
+[22:06:08.345][C][rfm69x.component:058]:   Detected RFM69 [REG_VERSION=0x10], version=0x24
+[22:06:08.351][C][rfm69x.component:062]:   OPMODE: Receiver Mode [0x10]
+[22:06:08.352][C][rfm69x.component:069]:   Frequency: 868.20 MHz [FRF=0xD90CCC]
+[22:06:08.358][C][rfm69x.component:074]:   PA Level: 31 [0x9F]
+[22:06:08.362][C][rfm69x.component:078]:   RSSI: 222 dB [0xDE]
+[22:06:08.370][C][rfm69x.component:084]:   IRQFLAGS1: ModeReady | RxReady | PLLLock | RSSI [0xD8]
+[22:06:08.370][C][rfm69x.component:087]:   IRQFLAGS2: None [0x00]
+[22:06:08.375][C][rfm69x.component:091]:   Promiscuous mode: Enabled [0x90]
+[22:06:08.384][I][rfm69x.component:126]: Configured frequency: 868.30 MHz [FRF=0xD91333]
+[22:06:08.460][C][rf_sniffer:166]: RF Sniffer:
+[22:06:08.465][C][rf_sniffer:169]:   Using radio component: RFM69x
+[22:06:08.469][C][rf_sniffer:170]:   Radio configured for Duco protocol
+[22:06:08.472][C][rf_sniffer:171]:   Freq: 868.326447 MHz, Rate: 38.384 kBaud, Dev: 20.63 kHz
+[22:06:08.475][C][rfm69x.component:053]: RFM69x:
+[22:06:08.487][C][rfm69x.component:054]:   CS Pin: GPIO5
+[22:06:08.487][C][rfm69x.component:058]:   Detected RFM69 [REG_VERSION=0x10], version=0x24
+[22:06:08.487][C][rfm69x.component:062]:   OPMODE: Receiver Mode [0x10]
+[22:06:08.494][C][rfm69x.component:069]:   Frequency: 868.30 MHz [FRF=0xD91333]
+[22:06:08.499][C][rfm69x.component:074]:   PA Level: 31 [0x9F]
+[22:06:08.502][C][rfm69x.component:078]:   RSSI: 217 dB [0xD9]
+[22:06:08.507][C][rfm69x.component:084]:   IRQFLAGS1: ModeReady | RxReady | PLLLock | RSSI [0xD8]
+[22:06:08.510][C][rfm69x.component:087]:   IRQFLAGS2: None [0x00]
+[22:06:08.517][C][rfm69x.component:091]:   Promiscuous mode: Enabled [0x90]
+[22:06:08.527][I][rfm69x.component:126]: Configured frequency: 868.40 MHz [FRF=0xD91999]
+[22:06:08.618][C][captive_portal:122]: Captive Portal:
+[22:06:08.628][I][rfm69x.component:126]: Configured frequency: 868.50 MHz [FRF=0xD92000]
+[22:06:08.705][C][web_server:309]: Web Server:
+[22:06:08.705][C][web_server:309]:   Address: rfm69x-sample.local:80
+[22:06:08.725][C][esphome.ota:075]: Over-The-Air updates:
+[22:06:08.725][C][esphome.ota:075]:   Address: rfm69x-sample.local:3232
+[22:06:08.725][C][esphome.ota:075]:   Version: 2
+[22:06:08.726][C][esphome.ota:082]:   Password configured
+[22:06:08.735][I][rfm69x.component:126]: Configured frequency: 868.60 MHz [FRF=0xD92666]
+[22:06:08.809][C][safe_mode:018]: Safe Mode:
+[22:06:08.809][C][safe_mode:018]:   Successful after: 60s
+[22:06:08.809][C][safe_mode:018]:   Invoke after: 10 attempts
+[22:06:08.809][C][safe_mode:018]:   Duration: 300s
+[22:06:08.829][C][web_server.ota:235]: Web Server OTA
+[22:06:08.834][I][rfm69x.component:126]: Configured frequency: 868.70 MHz [FRF=0xD92CCC]
+[22:06:08.916][C][api:207]: Server:
+[22:06:08.916][C][api:207]:   Address: rfm69x-sample.local:6053
+[22:06:08.917][C][api:212]:   Noise encryption: YES
+[22:06:08.927][C][mdns:213]: mDNS:
+[22:06:08.927][C][mdns:213]:   Hostname: rfm69x-sample
+[22:06:08.937][I][rfm69x.component:126]: Configured frequency: 868.80 MHz [FRF=0xD93333]
+[22:06:09.051][I][rfm69x.component:126]: Configured frequency: 868.90 MHz [FRF=0xD93999]
+[22:06:09.154][I][rfm69x.component:126]: Configured frequency: 869.00 MHz [FRF=0xD94000]
+[22:06:09.265][I][rfm69x.component:126]: Configured frequency: 868.00 MHz [FRF=0xD90000]
+[22:06:09.376][I][rfm69x.component:126]: Configured frequency: 868.10 MHz [FRF=0xD90666]
+[22:06:09.479][I][rfm69x.component:126]: Configured frequency: 868.20 MHz [FRF=0xD90CCC]
+[22:06:09.578][I][rfm69x.component:126]: Configured frequency: 868.30 MHz [FRF=0xD91333]
+[22:06:09.693][I][rfm69x.component:126]: Configured frequency: 868.40 MHz [FRF=0xD91999]
+<<snip a list of somewhat alike lines>>
+[22:06:30.154][I][rfm69x.component:126]: Configured frequency: 868.90 MHz [FRF=0xD93999]
+[22:06:30.254][I][rfm69x.component:126]: Configured frequency: 869.00 MHz [FRF=0xD94000]
+[22:06:30.356][I][rfm69x.component:126]: Configured frequency: 868.00 MHz [FRF=0xD90000]
+[22:06:30.469][I][rfm69x.component:126]: Configured frequency: 868.10 MHz [FRF=0xD90666]
+[22:06:30.547][I][rf_sniffer:065]: Scanning frequencies from 868.000 MHz to 869.000 MHz in 100.0 kHz steps
+[22:06:30.565][I][rfm69x.component:126]: Configured frequency: 868.20 MHz [FRF=0xD90CCC]
+[22:06:30.679][I][rfm69x.component:126]: Configured frequency: 868.30 MHz [FRF=0xD91333]
+[22:06:30.779][I][rfm69x.component:126]: Configured frequency: 868.40 MHz [FRF=0xD91999]
+[22:06:30.894][I][rfm69x.component:126]: Configured frequency: 868.50 MHz [FRF=0xD92000]
+[22:06:30.994][I][rfm69x.component:126]: Configured frequency: 868.60 MHz [FRF=0xD92666]
+<<snip a list of somewhat alike lines>>
+[22:07:22.225][I][rfm69x.component:126]: Configured frequency: 868.10 MHz [FRF=0xD90666]
+[22:07:22.341][I][rfm69x.component:126]: Configured frequency: 868.20 MHz [FRF=0xD90CCC]
+[22:07:22.458][I][rfm69x.component:126]: Configured frequency: 868.30 MHz [FRF=0xD91333]
+[22:07:22.557][I][rfm69x.component:126]: Configured frequency: 868.40 MHz [FRF=0xD91999]
+[22:07:22.672][I][rfm69x.component:126]: Configured frequency: 868.50 MHz [FRF=0xD92000]
+[22:07:22.771][I][rfm69x.component:126]: Configured frequency: 868.60 MHz [FRF=0xD92666]
+[22:07:22.886][I][rfm69x.component:126]: Configured frequency: 868.70 MHz [FRF=0xD92CCC]
+[22:07:22.964][W][rf_sniffer:088]: *** ACTIVITY at 868.700 MHz: RSSI = 0 dBm ***
+[22:07:22.970][W][component:443]: rf_sniffer took a long time for an operation (87 ms)
+[22:07:22.971][W][component:446]: Components should block for at most 30 ms
+[22:07:22.998][W][rfm69x.component:288]: Mode write failed! Tried to write 0x04, read back 0x00
+[22:07:23.001][I][rfm69x.component:126]: Configured frequency: 868.80 MHz [FRF=0xD93333]
+[22:07:23.011][W][rfm69x.component:288]: Mode write failed! Tried to write 0x04, read back 0x00
+[22:07:23.030][W][rfm69x.component:288]: Mode write failed! Tried to write 0x10, read back 0x00
+[22:07:23.081][W][rf_sniffer:088]: *** ACTIVITY at 868.800 MHz: RSSI = 0 dBm ***
+[22:07:23.112][W][rfm69x.component:288]: Mode write failed! Tried to write 0x04, read back 0x00
+[22:07:23.116][I][rfm69x.component:126]: Configured frequency: 868.90 MHz [FRF=0xD93999]
+[22:07:23.122][W][rfm69x.component:288]: Mode write failed! Tried to write 0x04, read back 0x00
+[22:07:23.141][W][rfm69x.component:288]: Mode write failed! Tried to write 0x10, read back 0x00
+[22:07:23.197][W][rf_sniffer:088]: *** ACTIVITY at 868.900 MHz: RSSI = 0 dBm ***
+[22:07:23.221][W][rfm69x.component:288]: Mode write failed! Tried to write 0x04, read back 0x00
+[22:07:23.227][I][rfm69x.component:126]: Configured frequency: 869.00 MHz [FRF=0xD94000]
+[22:07:23.235][W][rfm69x.component:288]: Mode write failed! Tried to write 0x04, read back 0x00
+[22:07:23.252][W][rfm69x.component:288]: Mode write failed! Tried to write 0x10, read back 0x00
+[22:07:23.305][W][rf_sniffer:088]: *** ACTIVITY at 869.000 MHz: RSSI = 0 dBm ***
+[22:07:23.332][W][rfm69x.component:288]: Mode write failed! Tried to write 0x04, read back 0x00
+[22:07:23.337][I][rfm69x.component:126]: Configured frequency: 868.00 MHz [FRF=0xD90000]
+<<.. and so on>>
