@@ -2,9 +2,9 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation, pins
 from esphome.components import spi
-from esphome.const import ( 
-            CONF_ID, 
-            CONF_FREQUENCY, 
+from esphome.const import (
+            CONF_ID,
+            CONF_FREQUENCY,
             CONF_PIN
 )
 
@@ -19,6 +19,7 @@ CONF_RAW_CODES = "raw_codes"
 CONF_RESET_PIN = "reset_pin"
 CONF_FREQUENCY = "frequency"
 CONF_PROMISCUOUS_MODE = "promiscuous_mode"
+CONF_PLL_TIMEOUT = "pll_timeout"
 
 CONFIG_SCHEMA = (
     cv.Schema(
@@ -28,7 +29,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_RESET_PIN): pins.gpio_output_pin_schema,
             cv.Optional(CONF_FREQUENCY): cv.positive_int,
             cv.Optional(CONF_PROMISCUOUS_MODE, default=False): cv.boolean,
-            cv.Optional(CONF_FREQUENCY): cv.frequency
+            cv.Optional(CONF_PLL_TIMEOUT, default=50): cv.positive_int,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -47,4 +48,6 @@ async def to_code(config):
     if config[CONF_PROMISCUOUS_MODE]:
         cg.add(var.set_promiscuous_mode(config[CONF_PROMISCUOUS_MODE]))
     if CONF_FREQUENCY in config:
-        cg.add(var.set_frequency(config[CONF_FREQUENCY]))  
+        cg.add(var.set_frequency(config[CONF_FREQUENCY]))
+    if CONF_PLL_TIMEOUT in config:
+        cg.add(var.set_pll_timeout(config[CONF_PLL_TIMEOUT]))

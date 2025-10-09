@@ -38,23 +38,27 @@ namespace esphome
                                          spi::DATA_RATE_8MHZ>
     {
     public:
+      // Enable/disable raw register values in any output that has raw codes (also see __init__.py)
+      void set_raw_codes(bool raw) { this->raw_codes_ = raw; }
+      void set_reset_pin(InternalGPIOPin *reset_pin) { this->reset_pin_ = reset_pin; };
+      void set_pll_timeout(uint32_t timeout_ms) { this->pll_timeout_ms_ = timeout_ms; }
+
       // Override methods from Component
       void setup() override;
       void loop() override;
       void dump_config() override;
 
-      // Enable/disable raw register values in any output that has raw codes (also see __init__.py)
-      void set_raw_codes(bool raw) { this->raw_codes_ = raw; }
-      void set_reset_pin(InternalGPIOPin *reset_pin) { this->reset_pin_ = reset_pin; };
-      void set_bitrate(uint32_t bps);
+      // safe setters that need PLL checks
       void set_frequency(uint32_t freq); // set frequency in MHz, e.g. 868000000
-      void set_modulation(RFM69Modulation mod,
-                          RFM69DataMode mode,
-                          RFM69Shaping shaping);
-
       void set_frequency_deviation(uint32_t frequency_deviation);
       void set_mode_rx();
       void set_mode_tx();
+
+      // setters for other parameters
+      void set_modulation(RFM69Modulation mod,
+                          RFM69DataMode mode,
+                          RFM69Shaping shaping);
+      void set_bitrate(uint32_t bps);
       void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
       void set_rx_bandwidth(uint32_t bandwidth);
       void set_sync_word(const std::vector<uint8_t> &sync_word);
@@ -71,25 +75,31 @@ namespace esphome
 
     protected:
       // protected variables
-      bool detected_{false}; // whether the device was detected during setup
-
+      bool detected_{false};                // whether the device was detected during setup
       bool raw_codes_{false};               // whether to show raw register values in dump_config
+      uint32_t pll_timeout_ms_{50};         // timeout for PLL lock in ms
       InternalGPIOPin *reset_pin_{nullptr}; // optional reset pin
       uint8_t version_{0};                  // version read from REG_VERSION
       uint32_t frequency_{868000000};       // default frequency 868 MHz
       bool promiscuous_mode_{false};        // whether promiscuous mode is enabled
 
+      // unsafe methods that do not check PLL lock and will be encapsulated in safe methods
+      void set_frequency_unsafe_(uint32_t freq); // set frequency in MHz, e.g. 868000000
+      void set_frequency_deviation_unsafe_(uint32_t frequency_deviation);
+      void set_opmode_unsafe_(uint8_t mode); // set the operation mode
+
       // Set and get methods for the module configuration
-      void configure_rfm69x();      // configure the module with current settings
-      void reset_rfm69x();          // reset the module via reset pin if defined
-      void set_mode_(uint8_t mode); // set the operation mode
+      void configure_rfm69x(); // configure the module with current settings
+      void reset_rfm69x();     // reset the module via reset pin if defined
+
       uint32_t get_frequency_() const { return this->frequency_; }
       uint32_t get_frequency_actual_(); // get actual frequency based on FRF registers
       bool get_promiscuous_mode_() const { return this->promiscuous_mode_; }
 
       // Low-level register access
-      uint8_t read_register_(uint8_t addr);
-      void write_register_(uint8_t addr, uint8_t value);
+      uint8_t read_register_raw_(uint8_t addr);
+      void write_register_raw_(uint8_t addr, uint8_t value);
+      bool wait_for_pll_lock_(uint32_t timeout_ms = 100);
 
       // helpful methods
       const char *decode_opmode_(uint8_t opmode);
