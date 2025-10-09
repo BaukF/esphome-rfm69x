@@ -8,7 +8,6 @@ namespace esphome
 {
   namespace rfm69x
   {
-
     // Add these BEFORE your class definition
     enum RFM69Modulation
     {
@@ -59,6 +58,7 @@ namespace esphome
                           RFM69DataMode mode,
                           RFM69Shaping shaping);
       void set_bitrate(uint32_t bps);
+      void set_pa_level(uint8_t level); // 0-31
       void set_promiscuous_mode(bool promiscuous) { this->promiscuous_mode_ = promiscuous; }
       void set_rx_bandwidth(uint32_t bandwidth);
       void set_sync_word(const std::vector<uint8_t> &sync_word);
@@ -68,9 +68,9 @@ namespace esphome
 
       // actual interaction with radio:
       bool packet_available();
-      uint8_t get_rssi() { return read_register_(REG_RSSIVALUE); }
-      uint8_t get_irq_flags1() { return read_register_(REG_IRQFLAGS1); }
-      uint8_t get_irq_flags2() { return read_register_(REG_IRQFLAGS2); }
+      uint8_t get_rssi() { return read_register_raw_(REG_RSSIVALUE); }
+      uint8_t get_irq_flags1() { return read_register_raw_(REG_IRQFLAGS1); }
+      uint8_t get_irq_flags2() { return read_register_raw_(REG_IRQFLAGS2); }
       std::vector<uint8_t> read_packet();
 
     protected:

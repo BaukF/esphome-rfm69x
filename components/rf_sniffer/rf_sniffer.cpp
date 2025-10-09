@@ -59,48 +59,58 @@ namespace esphome
 
     void RfSniffer::scan_frequencies()
     {
-      // Scan from 868.0 to 869.0 MHz in 100 kHz steps
       const uint32_t START_FREQ = 868000000;
       const uint32_t END_FREQ = 869000000;
-      const uint32_t STEP = 100000; // 100 kHz steps
+      const uint32_t STEP = 100000;
 
-      static uint32_t last_scan = 0;
+      static uint32_t last_step_time = 0;
+      static uint32_t settle_start_time = 0;
       static uint32_t current_freq = START_FREQ;
+      static enum { SCAN_SET_FREQ,
+                    SCAN_SETTLE,
+                    SCAN_READ } state = SCAN_SET_FREQ;
 
-      // Scan every 100ms
-      if (millis() - last_scan < 100)
+      const uint32_t now = millis();
+
+      switch (state)
+      {
+      case SCAN_SET_FREQ:
+        this->radio_->set_frequency(current_freq);
+        this->radio_->set_mode_rx();
+        settle_start_time = now;
+        state = SCAN_SETTLE;
+        break;
+
+      case SCAN_SETTLE:
+        if (now - settle_start_time >= 50)
+        {
+          state = SCAN_READ;
+        }
+        break;
+
+      case SCAN_READ:
+      {
+        uint8_t rssi = this->radio_->get_rssi();
+        int16_t rssi_dbm = -(rssi / 2);
+        if (rssi_dbm > -100)
+          ESP_LOGI(TAG, "*** ACTIVITY at %.3f MHz: RSSI = %d dBm ***", current_freq / 1e6, rssi_dbm);
+
+        current_freq += STEP;
+        if (current_freq > END_FREQ)
+        {
+          current_freq = START_FREQ;
+          ESP_LOGI(TAG, "--- Scan cycle complete ---");
+        }
+
+        last_step_time = now;
+        state = SCAN_SET_FREQ;
+      }
+      break;
+      }
+
+      // Limit frequency stepping to every 200 ms
+      if (now - last_step_time < 200)
         return;
-
-      last_scan = millis();
-
-      // Set frequency
-      this->radio_->set_frequency(current_freq);
-      this->radio_->set_mode_rx();
-      delay(50); // Let it settle
-
-      // Read RSSI
-      uint8_t rssi = this->radio_->get_rssi();
-      int16_t rssi_dbm = -(rssi / 2);
-
-      // Log if we see activity (threshold: > -100 dBm)
-      if (rssi_dbm > -100)
-      {
-        ESP_LOGW(TAG, "*** ACTIVITY at %.3f MHz: RSSI = %d dBm ***",
-                 current_freq / 1e6, rssi_dbm);
-      }
-      else
-      {
-        ESP_LOGD(TAG, "Scanning %.3f MHz: %d dBm",
-                 current_freq / 1e6, rssi_dbm);
-      }
-
-      // Next frequency
-      current_freq += STEP;
-      if (current_freq > END_FREQ)
-      {
-        current_freq = START_FREQ;
-        ESP_LOGI("RfSniffer", "--- Scan cycle complete ---");
-      }
     }
 
     void RfSniffer::loop()

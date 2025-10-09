@@ -49,7 +49,7 @@ namespace esphome
     void RFM69x::loop()
     {
       // No continuous work yet.
-      // Later: you’ll poll status or handle RadioLib here.
+      // Later: youll poll status or handle RadioLib here.
     }
 
     void RFM69x::dump_config()
@@ -196,6 +196,68 @@ namespace esphome
       }
     }
 
+    void RFM69x::set_modulation(RFM69Modulation mod,
+                                RFM69DataMode mode,
+                                RFM69Shaping shaping)
+    {
+      uint8_t reg_value = 0;
+
+      // Data mode
+      switch (mode)
+      {
+      case RFM69_PACKET_MODE:
+        reg_value |= DATAMODUL_PACKET_MODE;
+        break;
+      case RFM69_CONTINUOUS_SYNC:
+        reg_value |= DATAMODUL_CONTINUOUS_SYNC;
+        break;
+      case RFM69_CONTINUOUS_NOSYNC:
+        reg_value |= DATAMODUL_CONTINUOUS_NOSYNC;
+        break;
+      }
+
+      // Modulation type
+      reg_value |= (mod == RFM69_FSK) ? DATAMODUL_FSK : DATAMODUL_OOK;
+
+      // Shaping - now properly mapped
+      switch (shaping)
+      {
+      case RFM69_SHAPING_NONE:
+        reg_value |= DATAMODUL_SHAPING_NONE;
+        break;
+      case RFM69_SHAPING_GAUSSIAN_BT_1_0:
+        reg_value |= DATAMODUL_SHAPING_BT_1_0;
+        break;
+      case RFM69_SHAPING_GAUSSIAN_BT_0_5:
+        reg_value |= DATAMODUL_SHAPING_BT_0_5;
+        break;
+      case RFM69_SHAPING_GAUSSIAN_BT_0_3:
+        reg_value |= DATAMODUL_SHAPING_BT_0_3;
+        break;
+      }
+      this->enable();
+      this->write_register_raw_(REG_DATAMODUL, reg_value);
+      this->disable();
+    }
+
+    void RFM69x::set_bitrate(uint32_t bps)
+    {
+      uint16_t bitrate_reg = 32000000 / bps;
+      this->enable();
+      write_register_raw_(REG_BITRATEMSB, (bitrate_reg >> 8) & 0xFF);
+      write_register_raw_(REG_BITRATELSB, bitrate_reg & 0xFF);
+      this->disable();
+    }
+
+    void RFM69x::set_pa_level(uint8_t level)
+    {
+      uint8_t val = level & 0x1F; // PA level is 5 bits
+      this->enable();
+      this->write_register_raw_(REG_PALEVEL, val);
+      this->disable();
+      ESP_LOGI(TAG, "Set PA level: %u", val);
+    }
+
     void RFM69x::set_rx_bandwidth(uint32_t bandwidth)
     {
       // RX BW register calculation for RFM69
@@ -207,7 +269,7 @@ namespace esphome
       //           = 32MHz / (16 * 2^4) = 32MHz / 256 = 125 kHz
 
       // For closer to 101.5625: Mant=20 (0b01), Exp=2
-      //           = 32MHz / (20 * 2^4) = 32MHz / 320 = 100 kHz ✓
+      //           = 32MHz / (20 * 2^4) = 32MHz / 320 = 100 kHz 
 
       uint8_t reg_value = 0x42; // DccFreq=010, Mant=01 (20), Exp=010 (2)
       this->enable();
@@ -246,6 +308,17 @@ namespace esphome
       ESP_LOGI(TAG, "Configured sync word: %d bytes", sync_word.size());
     }
 
+    void RFM69x::set_sync_word(uint8_t *sync_bytes, uint8_t length)
+    {
+      if (sync_bytes == nullptr || length == 0 || length > 8)
+      {
+        ESP_LOGE(TAG, "Invalid sync word pointer/length");
+        return;
+      }
+      std::vector<uint8_t> v(sync_bytes, sync_bytes + length);
+      this->set_sync_word(v);
+    }
+
     void RFM69x::set_packet_length(uint8_t length)
     {
       this->enable();
@@ -281,20 +354,23 @@ namespace esphome
       this->disable();
       return (irq_flags & IRQ2_PAYLOAD_READY) != 0;
     }
-    /*(std::vector<uint8_t> RFM69x::read_packet()
+
+    std::vector<uint8_t> RFM69x::read_packet()
     {
-      /*std::vector<uint8_t> packet;
+      std::vector<uint8_t> packet;
 
-      // Read payload length (first byte in FIFO for variable length packets)
-      uint8_t length = read_register(REG_FIFO);
+      this->enable();
+      // For variable length packets the first byte in FIFO is length
+      uint8_t length = this->read_register_raw_(REG_FIFO);
 
-      // Read the actual data
       for (uint8_t i = 0; i < length; i++)
       {
-        packet.push_back(read_register(REG_FIFO));
+        packet.push_back(this->read_register_raw_(REG_FIFO));
       }
+      this->disable();
 
-      return packet;}*/
+      return packet;
+    }
 
     void RFM69x::set_frequency_unsafe_(uint32_t freq)
     {
@@ -389,62 +465,9 @@ namespace esphome
       return frf;
     }
 
-    void RFM69x::set_modulation(RFM69Modulation mod,
-                                RFM69DataMode mode,
-                                RFM69Shaping shaping)
-    {
-      uint8_t reg_value = 0;
-
-      // Data mode
-      switch (mode)
-      {
-      case RFM69_PACKET_MODE:
-        reg_value |= DATAMODUL_PACKET_MODE;
-        break;
-      case RFM69_CONTINUOUS_SYNC:
-        reg_value |= DATAMODUL_CONTINUOUS_SYNC;
-        break;
-      case RFM69_CONTINUOUS_NOSYNC:
-        reg_value |= DATAMODUL_CONTINUOUS_NOSYNC;
-        break;
-      }
-
-      // Modulation type
-      reg_value |= (mod == RFM69_FSK) ? DATAMODUL_FSK : DATAMODUL_OOK;
-
-      // Shaping - now properly mapped
-      switch (shaping)
-      {
-      case RFM69_SHAPING_NONE:
-        reg_value |= DATAMODUL_SHAPING_NONE;
-        break;
-      case RFM69_SHAPING_GAUSSIAN_BT_1_0:
-        reg_value |= DATAMODUL_SHAPING_BT_1_0;
-        break;
-      case RFM69_SHAPING_GAUSSIAN_BT_0_5:
-        reg_value |= DATAMODUL_SHAPING_BT_0_5;
-        break;
-      case RFM69_SHAPING_GAUSSIAN_BT_0_3:
-        reg_value |= DATAMODUL_SHAPING_BT_0_3;
-        break;
-      }
-      this->enable();
-      this->write_register_raw_(REG_DATAMODUL, reg_value);
-      this->disable();
-    }
-
-    void RFM69x::set_bitrate(uint32_t bps)
-    {
-      uint16_t bitrate_reg = 32000000 / bps;
-      this->enable();
-      write_register_raw_(REG_BITRATEMSB, (bitrate_reg >> 8) & 0xFF);
-      write_register_raw_(REG_BITRATELSB, bitrate_reg & 0xFF);
-      this->disable();
-    }
-
     uint8_t RFM69x::read_register_raw_(uint8_t addr)
     {
-      this->write_byte(addr & 0x7F); // clear MSB → read
+      this->write_byte(addr & 0x7F); // clear MSB  read
       uint8_t value = this->read_byte();
       return value;
     }
