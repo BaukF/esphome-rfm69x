@@ -31,7 +31,7 @@ namespace esphome
         */
 
         // later: initialize sniffer mode in radio
-        this->radio_->set_promiscuous_mode(true); 
+        this->radio_->set_promiscuous_mode(true);
         // this->radio_->set_frequency(868326447); // Ducomented by Arne, will not work for mine
         this->radio_->set_frequency(868400000); // My DucoBox is at 868.400 MHz
         this->radio_->set_modulation(rfm69x::RFM69_FSK,
@@ -147,16 +147,21 @@ namespace esphome
     void RfSniffer::dump_config()
     {
       ESP_LOGCONFIG(TAG, "RF Sniffer:");
+
       if (this->radio_ != nullptr)
       {
-        ESP_LOGCONFIG(TAG, "  Using radio component: RFM69x");
-        ESP_LOGCONFIG(TAG, "  Radio configured for Duco protocol");
-        ESP_LOGCONFIG(TAG, "  Freq: 868.326447 MHz, Rate: 38.384 kBaud, Dev: 20.63 kHz");
+        ESP_LOGCONFIG(TAG, "  Radio Component: Connected");
+        ESP_LOGCONFIG(TAG, "  Status Update Interval: %u ms", this->status_update_interval_);
+        ESP_LOGCONFIG(TAG, "  Scanning Mode: %s", this->scanning_mode_ ? "YES" : "NO");
+
+        // Let the radio dump its own detailed config
+        ESP_LOGCONFIG(TAG, "");
+        ESP_LOGCONFIG(TAG, "Radio Configuration:");
         this->radio_->dump_config();
       }
       else
       {
-        ESP_LOGW(TAG, "  No radio component set!");
+        ESP_LOGW(TAG, "  ⚠️  No radio component set!");
       }
     }
 
