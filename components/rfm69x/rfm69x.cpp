@@ -57,51 +57,148 @@ namespace esphome
       ESP_LOGCONFIG(TAG, "RFM69x:");
       LOG_PIN("  CS Pin: ", this->cs_);
 
+      if (this->reset_pin_ != nullptr)
+      {
+        LOG_PIN("  Reset Pin: ", this->reset_pin_);
+      }
+
       if (this->detected_)
       {
-        this->enable(); // Acquire Lock
-        ESP_LOGCONFIG(TAG, "  Detected RFM69%s, version=0x%02X",
-                      this->raw_codes_ ? " [REG_VERSION=0x10]" : "", this->version_);
+        // Get comprehensive status
+        auto status = this->get_radio_status();
 
-        uint8_t opmode = this->read_register_raw_(REG_OPMODE);
-        ESP_LOGCONFIG(TAG, "  OPMODE: %s%s",
-                      decode_opmode_(opmode),
-                      this->raw_codes_ ? str_sprintf(" [0x%02X]", opmode).c_str() : "");
+        ESP_LOGCONFIG(TAG, "  Status: DETECTED");
+        ESP_LOGCONFIG(TAG, "  Chip Version: 0x%02X (%s)",
+                      status.version,
+                      status.version == 0x24 ? "RFM69HCW" : status.version == 0x22 ? "RFM69CW"
+                                                                                   : "Unknown");
 
-        uint32_t frf = get_frequency_actual_();
-        double freq_hz = frf * (32000000.0 / 524288.0);
+        ESP_LOGCONFIG(TAG, "  Operating Mode: %s", status.mode.c_str());
+        ESP_LOGCONFIG(TAG, "  Frequency: %.3f MHz", status.frequency_mhz);
+        ESP_LOGCONFIG(TAG, "  RSSI: %d dBm", status.rssi_dbm);
+        ESP_LOGCONFIG(TAG, "  PLL Lock: %s", status.pll_locked ? "YES" : "NO");
 
-        ESP_LOGCONFIG(TAG, "  Frequency: %.2f MHz%s",
-                      freq_hz / 1e6,
-                      this->raw_codes_ ? str_sprintf(" [FRF=0x%06X]", frf).c_str() : "");
+        if (!status.pll_locked)
+        {
+          ESP_LOGW(TAG, "  WARNING: PLL not locked - check frequency configuration!");
+        }
 
-        uint8_t pa = this->read_register_raw_(REG_PALEVEL);
-        ESP_LOGCONFIG(TAG, "  PA Level: %u%s", pa & 0x1F,
-                      this->raw_codes_ ? str_sprintf(" [0x%02X]", pa).c_str() : "");
+        ESP_LOGCONFIG(TAG, "  IRQ Flags 1: %s", status.irq1_flags.c_str());
+        ESP_LOGCONFIG(TAG, "  IRQ Flags 2: %s", status.irq2_flags.c_str());
 
-        uint8_t rssi = this->read_register_raw_(REG_RSSIVALUE);
-        ESP_LOGCONFIG(TAG, "  RSSI: %u dB%s", rssi,
-                      this->raw_codes_ ? str_sprintf(" [0x%02X]", rssi).c_str() : "");
+        // Configuration settings
+        this->enable();
+        uint8_t datamodul = this->read_register_raw_(REG_DATAMODUL);
+        uint8_t packet_config = this->read_register_raw_(REG_PACKETCONFIG1);
+        uint8_t sync_config = this->read_register_raw_(REG_SYNCCONFIG);
 
-        uint8_t irq1 = this->read_register_raw_(REG_IRQFLAGS1);
-        uint8_t irq2 = this->read_register_raw_(REG_IRQFLAGS2);
+        // Decode data modulation
+        std::string mod_type = (datamodul & 0x08) ? "OOK" : "FSK";
+        std::string data_mode;
+        uint8_t mode_bits = datamodul & 0x60;
+        if (mode_bits == 0x00)
+          data_mode = "Packet";
+        else if (mode_bits == 0x40)
+          data_mode = "Continuous+Sync";
+        else
+          data_mode = "Continuous NoSync";
 
-        ESP_LOGCONFIG(TAG, "  IRQFLAGS1: %s%s",
-                      decode_irqflags1_(irq1).c_str(),
-                      this->raw_codes_ ? str_sprintf(" [0x%02X]", irq1).c_str() : "");
-        ESP_LOGCONFIG(TAG, "  IRQFLAGS2: %s%s",
-                      decode_irqflags2_(irq2).c_str(),
-                      this->raw_codes_ ? str_sprintf(" [0x%02X]", irq2).c_str() : "");
+        ESP_LOGCONFIG(TAG, "  Modulation: %s, Mode: %s", mod_type.c_str(), data_mode.c_str());
 
-        ESP_LOGCONFIG(TAG, "  Promiscuous mode: %s%s",
-                      this->promiscuous_mode_ ? "Enabled" : "Disabled",
-                      this->raw_codes_ ? str_sprintf(" [0x%02X]", this->read_register_raw_(REG_PACKETCONFIG1)).c_str() : "");
+        // Decode shaping
+        std::string shaping;
+        uint8_t shaping_bits = datamodul & 0x03;
+        switch (shaping_bits)
+        {
+        case 0x00:
+          shaping = "None";
+          break;
+        case 0x01:
+          shaping = "Gaussian BT=1.0";
+          break;
+        case 0x02:
+          shaping = "Gaussian BT=0.5";
+          break;
+        case 0x03:
+          shaping = "Gaussian BT=0.3";
+          break;
+        }
+        ESP_LOGCONFIG(TAG, "  Pulse Shaping: %s", shaping.c_str());
 
-        this->disable(); // Release Lock
+        // Bitrate
+        uint16_t bitrate_reg = (this->read_register_raw_(REG_BITRATEMSB) << 8) |
+                               this->read_register_raw_(REG_BITRATELSB);
+        uint32_t bitrate = 32000000 / bitrate_reg;
+        ESP_LOGCONFIG(TAG, "  Bitrate: %u bps (%.2f kBaud)", bitrate, bitrate / 1000.0f);
+
+        // Frequency deviation
+        uint16_t fdev_reg = (this->read_register_raw_(REG_FDEVMSB) << 8) |
+                            this->read_register_raw_(REG_FDEVLSB);
+        uint32_t fdev = (fdev_reg * 32000000ULL) >> 19;
+        ESP_LOGCONFIG(TAG, "  Frequency Deviation: %.2f kHz", fdev / 1000.0f);
+
+        // Sync word configuration
+        if (sync_config & 0x80)
+        {
+          uint8_t sync_size = ((sync_config >> 3) & 0x07) + 1;
+          ESP_LOGCONFIG(TAG, "  Sync Word: ENABLED (%d bytes)", sync_size);
+
+          std::string sync_hex;
+          for (uint8_t i = 0; i < sync_size; i++)
+          {
+            uint8_t sync_byte = this->read_register_raw_(REG_SYNCVALUE1 + i);
+            sync_hex += str_sprintf("%02X ", sync_byte);
+          }
+          ESP_LOGCONFIG(TAG, "    Bytes: %s", sync_hex.c_str());
+        }
+        else
+        {
+          ESP_LOGCONFIG(TAG, "  Sync Word: DISABLED");
+        }
+
+        // Packet configuration
+        bool variable_length = (packet_config & 0x80) != 0;
+        bool crc_on = (packet_config & 0x10) != 0;
+        ESP_LOGCONFIG(TAG, "  Packet Format: %s", variable_length ? "Variable Length" : "Fixed Length");
+        ESP_LOGCONFIG(TAG, "  CRC: %s", crc_on ? "Enabled" : "Disabled");
+        ESP_LOGCONFIG(TAG, "  Promiscuous Mode: %s", this->promiscuous_mode_ ? "YES" : "NO");
+
+        if (variable_length)
+        {
+          uint8_t max_len = this->read_register_raw_(REG_PAYLOADLENGTH);
+          ESP_LOGCONFIG(TAG, "  Max Packet Length: %d bytes", max_len);
+        }
+
+        // Power settings
+        uint8_t pa_level = this->read_register_raw_(REG_PALEVEL);
+        uint8_t power = pa_level & 0x1F;
+        int8_t power_dbm = -18 + power; // Simplified calculation
+        ESP_LOGCONFIG(TAG, "  TX Power: %d (≈%d dBm)", power, power_dbm);
+
+        this->disable();
+
+        // Summary health check
+        ESP_LOGCONFIG(TAG, "");
+        if (status.pll_locked && status.mode == "Receiver Mode")
+        {
+          ESP_LOGCONFIG(TAG, "  Radio Status: HEALTHY - Ready to receive");
+        }
+        else if (!status.pll_locked)
+        {
+          ESP_LOGW(TAG, "  Radio Status: WARNING - PLL not locked");
+        }
+        else
+        {
+          ESP_LOGCONFIG(TAG, "  Radio Status: OK - Mode: %s", status.mode.c_str());
+        }
       }
       else
       {
-        ESP_LOGE(TAG, "  RFM69 not detected (last read=0x%02X), check SPI/MOSI/MISO/CS/wiring.", this->version_);
+        ESP_LOGE(TAG, "  Status: NOT DETECTED");
+        ESP_LOGE(TAG, "  Last Read: 0x%02X (expected 0x24 for HCW or 0x22 for CW)", this->version_);
+        ESP_LOGE(TAG, "  Check SPI wiring: MOSI, MISO, SCK, CS pins");
+        ESP_LOGE(TAG, "  Check power supply: 3.3V to RFM69");
+        ESP_LOGE(TAG, "  Verify chip is RFM69W/CW/HCW");
       }
     }
 
@@ -356,6 +453,53 @@ namespace esphome
       uint8_t irq_flags = read_register_raw_(REG_IRQFLAGS2);
       this->disable();
       return (irq_flags & IRQ2_PAYLOAD_READY) != 0;
+    }
+
+    RFM69x::RadioStatus RFM69x::get_radio_status()
+    {
+      RadioStatus status;
+
+      status.detected = this->detected_;
+      status.version = this->version_;
+
+      if (!this->detected_)
+      {
+        // Return early with safe defaults if not detected
+        status.mode = "Not Detected";
+        status.frequency_mhz = 0.0f;
+        status.rssi_dbm = -128;
+        status.pll_locked = false;
+        status.irq1_flags = "N/A";
+        status.irq2_flags = "N/A";
+        return status;
+      }
+
+      this->enable();
+
+      // Read current mode
+      uint8_t opmode = this->read_register_raw_(REG_OPMODE);
+      status.mode = this->decode_opmode_(opmode);
+
+      // Get frequency
+      uint32_t frf = this->get_frequency_actual_();
+      status.frequency_mhz = (frf * 32000000.0 / 524288.0) / 1e6;
+
+      // Get RSSI
+      uint8_t rssi_raw = this->read_register_raw_(REG_RSSIVALUE);
+      status.rssi_dbm = -(rssi_raw / 2);
+
+      // Check PLL lock
+      uint8_t irq1 = this->read_register_raw_(REG_IRQFLAGS1);
+      status.pll_locked = (irq1 & IRQ1_PLLLOCK) != 0;
+
+      // Get IRQ flags
+      status.irq1_flags = this->decode_irqflags1_(irq1);
+      uint8_t irq2 = this->read_register_raw_(REG_IRQFLAGS2);
+      status.irq2_flags = this->decode_irqflags2_(irq2);
+
+      this->disable();
+
+      return status;
     }
 
     std::vector<uint8_t> RFM69x::read_packet()
