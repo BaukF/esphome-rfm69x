@@ -3,6 +3,21 @@
 #include "rf_sniffer.h"
 #include "../rfm69x/rfm69x.h"
 
+/*
+ * TODO:
+ * - Actually test with RFM69x hardware, DucoBox messages
+ * - Support CC1101 in addition to RFM69x
+ * - add option to switch between scanning mode and fixed frequency mode
+ * - in fixed frequency mode, display RSSI periodically and when packets are detected
+ * - read and display packet data when packets are detected
+ * - implement events for home assistant when packets are detected
+ * - add option to configure scan range and step size
+ * - add option to configure fixed frequency
+ * - add option to configure radio parameters (frequency, bitrate, deviation, bandwidth, sync word, etc.)
+ * - add option to configure status update interval
+ * - extend documentation
+ */
+
 namespace esphome
 {
   namespace rf_sniffer
@@ -151,7 +166,7 @@ namespace esphome
       if (this->radio_ != nullptr)
       {
         ESP_LOGCONFIG(TAG, "  Radio Component: Connected");
-        ESP_LOGCONFIG(TAG, "  Status Update Interval: %u ms", this->status_update_interval_);
+        // TODO: ESP_LOGCONFIG(TAG, "  Status Update Interval: %u ms", this->status_update_interval_);
         ESP_LOGCONFIG(TAG, "  Scanning Mode: %s", this->scanning_mode_ ? "YES" : "NO");
 
         // Let the radio dump its own detailed config

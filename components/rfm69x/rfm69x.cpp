@@ -6,6 +6,20 @@
  * but method by method I'm trying to align the code to the code that is presented
  * in the sx128x component of esphome. Hopefully this will make it easier to integrate
  * RFM69 support into esphome in the future.
+ *
+ * RFM69 is a very popular low-cost sub-GHz radio module, and it would be great
+ * to have it supported in esphome.
+ * The RFM69 is used in many applications, including the DucoBox heating controller
+ * from Duco, which is quite popular in the Netherlands. But that is another component.
+ *
+ * TODO:
+ * - Implement sending packets
+ * - Implement interrupts for packet reception
+ * - Implement more configuration options
+ * - Implement power management (sleep modes)
+ * - Add examples and documentation
+ * - Temperature sensor reading (RFM69HCW)
+ * - Hardware protection (RFM69HCW)
  */
 
 namespace esphome
@@ -202,6 +216,8 @@ namespace esphome
       }
     }
 
+    /// @brief Frequency setter with PLL lock check,
+    /// @param freq e.g. 868000000, this is fixed for 868 MHz set
     void RFM69x::set_frequency(uint32_t freq)
     {
       this->enable();
