@@ -142,7 +142,7 @@ namespace esphome
       {
         //
         static uint32_t last_check = 0;
-        if (millis() - last_check > 1000)
+        if (millis() - last_check > 30000)
         {
           uint8_t rssi = this->radio_->get_rssi();
           uint8_t irq2 = this->radio_->get_irq_flags2();
