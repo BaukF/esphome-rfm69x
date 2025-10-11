@@ -512,7 +512,7 @@ namespace esphome
       status.mode = this->decode_opmode_(opmode);
 
       // Get frequency
-      uint32_t frf = this->get_frequency_actual_();
+      uint32_t frf = this->get_frequency_actual_unsafe_();
       status.frequency_mhz = (frf * 32000000.0 / 524288.0) / 1e6;
 
       // Get RSSI
@@ -607,9 +607,9 @@ namespace esphome
       // set promiscuous mode
       if (this->promiscuous_mode_)
       {
+        this->enable();
         uint8_t val = this->read_register_raw_(REG_PACKETCONFIG1);
         val |= 0x04; // set bit 2
-        this->enable();
         this->write_register_raw_(REG_PACKETCONFIG1, val);
         this->disable();
       }
@@ -631,13 +631,12 @@ namespace esphome
       }
     }
 
-    uint32_t RFM69x::get_frequency_actual_()
+    uint32_t RFM69x::get_frequency_actual_unsafe_()
     {
-      this->enable();
+
       uint8_t msb = this->read_register_raw_(REG_FRFMSB);
       uint8_t mid = this->read_register_raw_(REG_FRFMID);
       uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
-      this->disable();
 
       uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
       return frf;
