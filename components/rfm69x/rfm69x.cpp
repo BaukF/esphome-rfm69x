@@ -32,25 +32,26 @@ namespace esphome
     // start default methods for esphome component
     void RFM69x::setup()
     {
+      ESP_LOGD(TAG, "=== setup() START ===");
       ESP_LOGD(TAG, "Initializing RFM69x...");
 
-      // Prepare SPI
       this->spi_setup();
-
       this->reset_rfm69x();
 
+      ESP_LOGD(TAG, "About to call configure_rfm69x() - FIRST TIME");
       this->configure_rfm69x();
-      delay(10); // Give it a moment to start
+      delay(10);
 
-      this->enable(); // Acquire Lock
-      // Probe version register
+      this->enable();
       this->version_ = this->read_register_raw_(REG_VERSION);
-      this->disable(); // Release Lock
+      this->disable();
 
       if (this->version_ == 0x24 || this->version_ == 0x22)
-      { // 0x24 = RFM69HCW, 0x22 = RFM69CW
+      {
         this->detected_ = true;
         ESP_LOGI(TAG, "Detected RFM69, version=0x%02X", this->version_);
+
+        ESP_LOGD(TAG, "About to call configure_rfm69x() - SECOND TIME");
         this->configure_rfm69x();
       }
       else
@@ -58,6 +59,8 @@ namespace esphome
         this->detected_ = false;
         ESP_LOGE(TAG, "RFM69 not detected (last read=0x%02X)", this->version_);
       }
+
+      ESP_LOGD(TAG, "=== setup() END ===");
     }
 
     void RFM69x::loop()
