@@ -96,8 +96,8 @@ namespace esphome
         {
           ESP_LOGW(TAG, "  WARNING: PLL not locked - check frequency configuration!");
         }
-
-        ESP_LOGCONFIG(TAG, "  IRQ Flags 1: %s", status.irq1_flags.c_str());
+        E
+            ESP_LOGCONFIG(TAG, "  IRQ Flags 1: %s", status.irq1_flags.c_str());
         ESP_LOGCONFIG(TAG, "  IRQ Flags 2: %s", status.irq2_flags.c_str());
 
         // Configuration settings
@@ -307,6 +307,22 @@ namespace esphome
       {
         ESP_LOGE(TAG, "PLL failed to lock after setting TX mode");
       }
+    }
+
+    void RFM69x::set_mode_standby()
+    {
+      this->enable();
+      this->set_opmode_unsafe_(OPMODE_STANDBY);
+      this->disable();
+      ESP_LOGI(TAG, "Set mode to STANDBY");
+    }
+
+    void RFM69x::set_mode_sleep()
+    {
+      this->enable();
+      this->set_opmode_unsafe_(OPMODE_SLEEP);
+      this->disable();
+      ESP_LOGI(TAG, "Set mode to SLEEP");
     }
 
     void RFM69x::set_modulation(RFM69Modulation mod,

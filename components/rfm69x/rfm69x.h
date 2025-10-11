@@ -63,7 +63,8 @@ namespace esphome
       void set_frequency_deviation(uint32_t frequency_deviation);
       void set_mode_rx();
       void set_mode_tx();
-
+      void set_mode_standby();
+      void set_mode_sleep();
       // setters for other parameters
       void set_modulation(RFM69Modulation mod,
                           RFM69DataMode mode,
