@@ -562,14 +562,10 @@ namespace esphome
       // Datasheet: frequency registers must be written in Standby
       this->set_opmode_unsafe_(OPMODE_STANDBY); // Standby mode
 
-      // Step size = 32 MHz / 2^19 = 61.03515625 Hz
-      constexpr double FSTEP = 32000000.0 / 524288.0;
-
-      uint32_t frf = (uint32_t)(this->frequency_ / FSTEP);
-
-      this->write_register_raw_(REG_FRFMSB, (uint8_t)(frf >> 16));
-      this->write_register_raw_(REG_FRFMID, (uint8_t)(frf >> 8));
-      this->write_register_raw_(REG_FRFLSB, (uint8_t)(frf));
+      uint32_t frf = ((uint64_t)this->frequency_ << 19) / 32000000ULL;
+      write_register_raw_(REG_FRFMSB, frf >> 16);
+      write_register_raw_(REG_FRFMID, frf >> 8);
+      write_register_raw_(REG_FRFLSB, frf);
 
       ESP_LOGI(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
                this->frequency_ / 1e6, frf);
