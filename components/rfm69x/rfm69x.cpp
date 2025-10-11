@@ -483,7 +483,7 @@ namespace esphome
       this->enable();
       uint8_t irq_flags = read_register_raw_(REG_IRQFLAGS2);
       this->disable();
-      return (irq_flags & IRQ2_PAYLOAD_READY) != 0;
+      return (irq_flags & IRQ2_PAYLOAD_READY)
     }
 
     RFM69x::RadioStatus RFM69x::get_radio_status()
@@ -521,7 +521,7 @@ namespace esphome
 
       // Check PLL lock
       uint8_t irq1 = this->read_register_raw_(REG_IRQFLAGS1);
-      status.pll_locked = (irq1 & IRQ1_PLLLOCK) != 0;
+      status.pll_locked = (irq1 & IRQ1_PLLLOCK);
 
       // Get IRQ flags
       status.irq1_flags = this->decode_irqflags1_(irq1);
