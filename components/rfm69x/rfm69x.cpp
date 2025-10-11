@@ -640,12 +640,10 @@ namespace esphome
 
     uint32_t RFM69x::get_frequency_actual_unsafe_()
     {
-
-      uint8_t msb = this->read_register_raw_(REG_FRFMSB);
-      uint8_t mid = this->read_register_raw_(REG_FRFMID);
-      uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
-
-      uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
+      uint32_t frf = 0;
+      frf |= ((uint32_t)read_register_raw_(REG_FRFMSB)) << 16;
+      frf |= ((uint32_t)read_register_raw_(REG_FRFMID)) << 8;
+      frf |= read_register_raw_(REG_FRFLSB);
       return frf;
     }
 
