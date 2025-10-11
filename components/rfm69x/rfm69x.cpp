@@ -599,19 +599,27 @@ namespace esphome
     // start helper methods for rfm69x
     void RFM69x::configure_rfm69x()
     {
-      // set frequency
-      if (this->frequency_ != 0)
-      {
-        set_frequency(this->frequency_);
-      }
-      // set promiscuous mode
+      // Always set frequency (even if using default)
+      set_frequency(this->frequency_);
+
+      // Set default modulation
+      set_modulation(RFM69_FSK, RFM69_PACKET_MODE, RFM69_SHAPING_NONE);
+
+      // Set default bitrate
+      set_bitrate(4800); // Default bitrate
+
+      // Set default power
+      set_power_level(0); // by default no power
+
+      // Configure promiscuous mode if enabled
       if (this->promiscuous_mode_)
       {
         this->enable();
         uint8_t val = this->read_register_raw_(REG_PACKETCONFIG1);
-        val |= 0x04; // set bit 2
+        val |= 0x04;
         this->write_register_raw_(REG_PACKETCONFIG1, val);
         this->disable();
+        ESP_LOGI(TAG, "Promiscuous mode enabled");
       }
       // other configuration can be added here
     }
