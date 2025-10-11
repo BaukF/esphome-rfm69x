@@ -96,8 +96,7 @@ namespace esphome
         {
           ESP_LOGW(TAG, "  WARNING: PLL not locked - check frequency configuration!");
         }
-        E
-            ESP_LOGCONFIG(TAG, "  IRQ Flags 1: %s", status.irq1_flags.c_str());
+        ESP_LOGCONFIG(TAG, "  IRQ Flags 1: %s", status.irq1_flags.c_str());
         ESP_LOGCONFIG(TAG, "  IRQ Flags 2: %s", status.irq2_flags.c_str());
 
         // Configuration settings
