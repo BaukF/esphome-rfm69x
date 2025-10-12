@@ -100,6 +100,7 @@ namespace esphome
       void set_frequency_unsafe_(uint32_t freq); // set frequency in MHz, e.g. 868000000
       void set_frequency_deviation_unsafe_(uint32_t frequency_deviation);
       void set_opmode_unsafe_(uint8_t mode); // set the operation mode
+      void set_promiscuous_mode_(bool promiscuous);
 
       // Set and get methods for the module configuration
       void configure_rfm69x(); // configure the module with current settings
