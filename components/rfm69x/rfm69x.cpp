@@ -100,6 +100,12 @@ namespace esphome
 
         this->disable();
 
+        // METHOD 2: Using get_radio_status() (what dump_config uses)
+        auto status = this->get_radio_status();
+        ESP_LOGD(TAG, "[get_radio_status] Frequency: %.3f MHz", status.frequency_mhz);
+        ESP_LOGD(TAG, "[get_radio_status] Mode: %s", status.mode.c_str());
+        ESP_LOGD(TAG, "[get_radio_status] PLL Lock: %s", status.pll_locked ? "YES" : "NO");
+
         ESP_LOGD(TAG, "=== END DEBUG DUMP ===");
 
         last_debug_dump = now;
@@ -686,6 +692,9 @@ namespace esphome
       uint8_t msb = this->read_register_raw_(REG_FRFMSB);
       uint8_t mid = this->read_register_raw_(REG_FRFMID);
       uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
+
+      ESP_LOGD(TAG, "get_frequency_actual_unsafe_: MSB=0x%02X MID=0x%02X LSB=0x%02X",
+               msb, mid, lsb);
 
       uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
       return frf;
