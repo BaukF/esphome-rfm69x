@@ -557,6 +557,11 @@ namespace esphome
       uint8_t opmode = this->read_register_raw_(REG_OPMODE);
       status.mode = this->decode_opmode_(opmode);
 
+      // see if cs is bugging out
+      this->disable();
+      delay(1);
+      this->enable();
+
       // Get frequency
       uint32_t freq = this->get_frequency_actual_unsafe_();
       double fstep = 32000000.0 / 524288.0; // 61.03515625 Hz
