@@ -111,6 +111,8 @@ namespace esphome
       bool get_promiscuous_mode_() const { return this->promiscuous_mode_; }
 
       // Low-level register access
+      uint8_t read_register_(uint8_t addr);
+      void write_register_(uint8_t addr, uint8_t value);
       uint8_t read_register_raw_(uint8_t addr);
       void write_register_raw_(uint8_t addr, uint8_t value);
       bool wait_for_pll_lock_(uint32_t timeout_ms = 100);

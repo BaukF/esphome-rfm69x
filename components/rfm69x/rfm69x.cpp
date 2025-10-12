@@ -38,19 +38,15 @@ namespace esphome
       this->spi_setup();
       this->reset_rfm69x();
 
-      ESP_LOGD(TAG, "About to call configure_rfm69x() - FIRST TIME");
-      this->configure_rfm69x();
-      delay(10);
-
-      this->version_ = this->read_register_raw_(REG_VERSION);
+      this->version_ = this->read_register_(REG_VERSION);
 
       if (this->version_ == 0x24 || this->version_ == 0x22)
       {
         this->detected_ = true;
         ESP_LOGI(TAG, "Detected RFM69, version=0x%02X", this->version_);
-
-        ESP_LOGD(TAG, "About to call configure_rfm69x() - SECOND TIME");
+        ESP_LOGD(TAG, "About to call configure_rfm69x()");
         this->configure_rfm69x();
+        delay(10); // wait a bit as this is first setup
       }
       else
       {
@@ -143,9 +139,9 @@ namespace esphome
         ESP_LOGCONFIG(TAG, "  IRQ Flags 2: %s", status.irq2_flags.c_str());
 
         // Configuration settings
-        uint8_t datamodul = this->read_register_raw_(REG_DATAMODUL);
-        uint8_t packet_config = this->read_register_raw_(REG_PACKETCONFIG1);
-        uint8_t sync_config = this->read_register_raw_(REG_SYNCCONFIG);
+        uint8_t datamodul = this->read_register_(REG_DATAMODUL);
+        uint8_t packet_config = this->read_register_(REG_PACKETCONFIG1);
+        uint8_t sync_config = this->read_register_(REG_SYNCCONFIG);
 
         // Decode data modulation
         std::string mod_type = (datamodul & 0x08) ? "OOK" : "FSK";
@@ -181,14 +177,22 @@ namespace esphome
         ESP_LOGCONFIG(TAG, "  Pulse Shaping: %s", shaping.c_str());
 
         // Bitrate
+        // should become get_bitrate() method
+        this->enable();
         uint16_t bitrate_reg = (this->read_register_raw_(REG_BITRATEMSB) << 8) |
                                this->read_register_raw_(REG_BITRATELSB);
+        this->disable();
+        delay(1); // small delay to ensure SPI is done
         uint32_t bitrate = 32000000 / bitrate_reg;
         ESP_LOGCONFIG(TAG, "  Bitrate: %u bps (%.2f kBaud)", bitrate, bitrate / 1000.0f);
 
         // Frequency deviation
+        // should become get_frequency_deviation() method
+        this->enable();
         uint16_t fdev_reg = (this->read_register_raw_(REG_FDEVMSB) << 8) |
                             this->read_register_raw_(REG_FDEVLSB);
+        this->disable();
+        delay(1); // small delay to ensure SPI is done
         uint32_t fdev = (fdev_reg * 32000000ULL) >> 19;
         ESP_LOGCONFIG(TAG, "  Frequency Deviation: %.2f kHz", fdev / 1000.0f);
 
@@ -220,12 +224,12 @@ namespace esphome
 
         if (variable_length)
         {
-          uint8_t max_len = this->read_register_raw_(REG_PAYLOADLENGTH);
+          uint8_t max_len = this->read_register_(REG_PAYLOADLENGTH);
           ESP_LOGCONFIG(TAG, "  Max Packet Length: %d bytes", max_len);
         }
 
         // Power settings
-        uint8_t pa_level = this->read_register_raw_(REG_PALEVEL);
+        uint8_t pa_level = this->read_register_(REG_PALEVEL);
         uint8_t power = pa_level & 0x1F;
         int8_t power_dbm = -18 + power; // Simplified calculation
         ESP_LOGCONFIG(TAG, "  TX Power: %d (≈%d dBm)", power, power_dbm);
@@ -233,7 +237,9 @@ namespace esphome
         {
           ESP_LOGW(TAG, "  WARNING: Power level >31 requires PA Boost (not implemented)");
         }
-        // Summary health check
+        // Summary health check: I'm not sure if this is useful and truthful
+        // but it might help users to quickly see if the radio is in a good state
+        // or if something is misconfigured.
         ESP_LOGCONFIG(TAG, "");
         if (status.pll_locked && status.mode == "Receiver Mode")
         {
@@ -263,18 +269,37 @@ namespace esphome
     void RFM69x::set_frequency(uint32_t freq)
     {
       this->set_frequency_unsafe_(freq);
-      ESP_LOGD(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
-               this->frequency_ / 1e6, freq);
-      bool pll_locked = this->wait_for_pll_lock_(this->pll_timeout_ms_);
+    }
 
-      if (pll_locked)
+    // to write fequency, we need to write to 3 registers and that
+    // may take some time, and watch for pll lock
+    // and enable/disable will be done here too. So raw access to SPI
+    void RFM69x::set_frequency_unsafe_(uint32_t freq)
+    {
+      this->frequency_ = freq;
+
+      // Datasheet: frequency registers must be written in Standby
+      this->set_opmode_unsafe_(OPMODE_STANDBY); // Standby mode
+
+      // Step size = 32 MHz / 2^19 = 61.03515625 Hz
+      constexpr double FSTEP = 32000000.0 / 524288.0;
+
+      uint32_t frf = (uint32_t)(this->frequency_ / FSTEP);
+
+      this->enable();
+      this->write_register_raw_(REG_FRFMSB, (uint8_t)(frf >> 16));
+      this->write_register_raw_(REG_FRFMID, (uint8_t)(frf >> 8));
+      this->write_register_raw_(REG_FRFLSB, (uint8_t)(frf));
+      this->disable();
+
+      bool plllock = this->wait_for_pll_lock_(this->pll_timeout_ms_);
+      if (!plllock)
       {
-        ESP_LOGI(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
-                 this->frequency_ / 1e6, freq);
+        ESP_LOGE(TAG, "PLL failed to lock after frequency set");
       }
       else
       {
-        ESP_LOGE(TAG, "PLL failed to lock");
+        ESP_LOGI(TAG, "Succesfully set and locked frequency to %.3f MHz", this->frequency_ / 1e6);
       }
     }
 
@@ -282,20 +307,26 @@ namespace esphome
     {
       this->enable();
       this->set_frequency_deviation_unsafe_(frequency_deviation);
-
-      bool pll_locked = this->wait_for_pll_lock_(this->pll_timeout_ms_);
-
-      if (pll_locked)
-      {
-        ESP_LOGI(TAG, "Configured frequency deviation: %.2f kHz",
-                 frequency_deviation / 1000.0);
-      }
-      else
-      {
-        ESP_LOGE(TAG, "PLL failed to lock");
-      }
+      this->disable();
     }
 
+    // to write fequency deviation, we need to write to 2 registers and that
+    // may take some time.
+    // and enable/disable will be done here too. So raw access to SPI
+    void RFM69x::set_frequency_deviation_unsafe_(uint32_t frequency_deviation)
+    {
+      uint16_t fdev_reg = ((uint64_t)frequency_deviation << 19) / 32000000;
+
+      // Datasheet: frequency deviation registers must be written in Standby
+      this->set_opmode_unsafe_(OPMODE_STANDBY); // Standby mode (NOT SURE IF NEEDED and needs return to previous mode?)
+      write_register_raw_(REG_FDEVMSB, (fdev_reg >> 8) & 0xFF);
+      write_register_raw_(REG_FDEVLSB, fdev_reg & 0xFF);
+      delay(1); // Small delay to ensure registers are set
+
+      ESP_LOGD(TAG, "Set frequency deviation: %.2f kHz [FDEV=0x%04X]",
+               frequency_deviation / 1000.0, fdev_reg);
+    }
+///////////// WE ENDED HERE /////////////
     void RFM69x::set_mode_rx()
     {
       // Must transition through Standby (or FS) for reliable change
@@ -555,55 +586,6 @@ namespace esphome
       return packet;
     }
 
-    // to write fequency, we need to write to 3 registers and that
-    // may take some time, and watch for pll lock
-    // and enable/disable will be done here too. So raw access to SPI
-    void RFM69x::set_frequency_unsafe_(uint32_t freq)
-    {
-      this->frequency_ = freq;
-
-      // Datasheet: frequency registers must be written in Standby
-      this->set_opmode_unsafe_(OPMODE_STANDBY); // Standby mode
-
-      // Step size = 32 MHz / 2^19 = 61.03515625 Hz
-      constexpr double FSTEP = 32000000.0 / 524288.0;
-
-      uint32_t frf = (uint32_t)(this->frequency_ / FSTEP);
-
-      this->enable();
-      this->write_register_raw_(REG_FRFMSB, (uint8_t)(frf >> 16));
-      this->write_register_raw_(REG_FRFMID, (uint8_t)(frf >> 8));
-      this->write_register_raw_(REG_FRFLSB, (uint8_t)(frf));
-      this->disable();
-
-      bool plllock = this->wait_for_pll_lock_(this->pll_timeout_ms_);
-      if (!plllock)
-      {
-        ESP_LOGE(TAG, "PLL failed to lock after frequency set");
-      }
-
-      ESP_LOGD(TAG, "Configured frequency: %.2f MHz [FRF=0x%06X]",
-               this->frequency_ / 1e6, frf);
-    }
-
-    // to write fequency deviation, we need to write to 2 registers and that
-    // may take some time.
-    // and enable/disable will be done here too. So raw access to SPI
-    void RFM69x::set_frequency_deviation_unsafe_(uint32_t frequency_deviation)
-    {
-      uint16_t fdev_reg = ((uint64_t)frequency_deviation << 19) / 32000000;
-
-      // Datasheet: frequency deviation registers must be written in Standby
-      this->enable();
-      this->set_opmode_unsafe_(OPMODE_STANDBY); // Standby mode (NOT SURE IF NEEDED and needs return to previous mode?)
-      write_register_raw_(REG_FDEVMSB, (fdev_reg >> 8) & 0xFF);
-      write_register_raw_(REG_FDEVLSB, fdev_reg & 0xFF);
-      delay(1); // Small delay to ensure registers are set
-      this->disable();
-      ESP_LOGD(TAG, "Set frequency deviation: %.2f kHz [FDEV=0x%04X]",
-               frequency_deviation / 1000.0, fdev_reg);
-    }
-
     void RFM69x::set_opmode_unsafe_(uint8_t mode)
     {
       this->enable();
@@ -697,13 +679,26 @@ namespace esphome
       return frf;
     }
 
-    //// left here to work on enable/disable2
+    uint8_t RFM69x::read_register_(uint8_t addr)
+    {
+      this->enable();
+      uint8_t value = this->read_register_raw_(addr);
+      this->disable();
+      return value;
+    }
 
     uint8_t RFM69x::read_register_raw_(uint8_t addr)
     {
       this->write_byte(addr & 0x7F); // clear MSB  read
       uint8_t value = this->read_byte();
       return value;
+    }
+
+    void RFM69x::write_register_(uint8_t addr, uint8_t value)
+    {
+      this->enable();
+      this->write_register_raw_(addr, value);
+      this->disable();
     }
 
     void RFM69x::write_register_raw_(uint8_t addr, uint8_t value)
