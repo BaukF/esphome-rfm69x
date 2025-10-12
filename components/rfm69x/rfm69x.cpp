@@ -643,19 +643,21 @@ namespace esphome
       }
     }
 
-    uint32_t RFM69x::get_frequency_actual_unsafe_()
-    {
-      uint8_t msb = this->read_register_raw_(REG_FRFMSB);
-      uint8_t mid = this->read_register_raw_(REG_FRFMID);
-      uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
+uint32_t RFM69x::get_frequency_actual_unsafe_()
+{
+    uint8_t msb = this->read_register_raw_(REG_FRFMSB);
+    uint8_t mid = this->read_register_raw_(REG_FRFMID);
+    uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
 
-      uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
+    uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
 
-      // Step size = 32 MHz / 2^19 = 61.03515625 Hz
-      constexpr double FSTEP = 32000000.0 / 524288.0;
+    // Step size = F_XOSC / 2^19 where F_XOSC = 32 MHz
+    // Frequency = FRF * F_STEP
+    // Use 64-bit arithmetic to prevent overflow
+    uint64_t freq_hz = ((uint64_t)frf * 32000000ULL) / 524288ULL;
 
-      return (uint32_t)(frf * FSTEP);
-    }
+    return (uint32_t)freq_hz;
+}
 
     uint8_t RFM69x::read_register_raw_(uint8_t addr)
     {
