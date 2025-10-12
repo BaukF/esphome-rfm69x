@@ -515,8 +515,8 @@ namespace esphome
       status.mode = this->decode_opmode_(opmode);
 
       // Get frequency
-      uint32_t frf = this->get_frequency_actual_unsafe_();
-      status.frequency_mhz = (frf * 32000000.0 / 524288.0) / 1e6;
+      uint32_t freq = this->get_frequency_actual_unsafe_();
+      status.frequency_mhz = (freq) / 1e6;
 
       // Get RSSI
       uint8_t rssi_raw = this->read_register_raw_(REG_RSSIVALUE);
@@ -557,7 +557,8 @@ namespace esphome
     {
       this->frequency_ = freq;
 
-      uint8_t current_mode = this->read_register_raw_(REG_OPMODE) & 0x1C;
+      // to be removed, not used
+      // uint8_t current_mode = this->read_register_raw_(REG_OPMODE) & 0x1C;
 
       // Datasheet: frequency registers must be written in Standby
       this->set_opmode_unsafe_(OPMODE_STANDBY); // Standby mode
@@ -644,13 +645,17 @@ namespace esphome
 
     uint32_t RFM69x::get_frequency_actual_unsafe_()
     {
-
       uint8_t msb = this->read_register_raw_(REG_FRFMSB);
       uint8_t mid = this->read_register_raw_(REG_FRFMID);
       uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
 
       uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
       return frf;
+
+      // Step size = 32 MHz / 2^19 = 61.03515625 Hz
+      constexpr double FSTEP = 32000000.0 / 524288.0;
+
+      return (uint32_t)(frf * FSTEP);
     }
 
     uint8_t RFM69x::read_register_raw_(uint8_t addr)
