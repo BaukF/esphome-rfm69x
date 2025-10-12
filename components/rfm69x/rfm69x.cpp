@@ -697,7 +697,7 @@ namespace esphome
       return frf;
     }
 
-    //// left here to work on enable/disable
+    //// left here to work on enable/disable2
 
     uint8_t RFM69x::read_register_raw_(uint8_t addr)
     {
