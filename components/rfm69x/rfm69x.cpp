@@ -71,7 +71,7 @@ namespace esphome
       uint32_t now = millis();
 
       // Check if 60 seconds (60000 ms) have passed
-      if (now - last_debug_dump >= 60000)
+   /*   if (now - last_debug_dump >= 60000)
       {
         ESP_LOGD(TAG, "=== PERIODIC DEBUG DUMP ===");
 
@@ -110,6 +110,7 @@ namespace esphome
 
         last_debug_dump = now;
       }
+*/
     }
 
     void RFM69x::dump_config()
