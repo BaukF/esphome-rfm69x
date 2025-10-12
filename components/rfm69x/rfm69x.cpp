@@ -650,7 +650,6 @@ namespace esphome
       uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
 
       uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
-      return frf;
 
       // Step size = 32 MHz / 2^19 = 61.03515625 Hz
       constexpr double FSTEP = 32000000.0 / 524288.0;
