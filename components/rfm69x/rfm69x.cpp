@@ -65,8 +65,45 @@ namespace esphome
 
     void RFM69x::loop()
     {
-      // No continuous work yet.
-      // Later: you'll poll status or handle RadioLib here.
+      // Static variable persists between loop() calls
+      static uint32_t last_debug_dump = 0;
+
+      uint32_t now = millis();
+
+      // Check if 60 seconds (60000 ms) have passed
+      if (now - last_debug_dump >= 60000)
+      {
+        ESP_LOGD(TAG, "=== PERIODIC DEBUG DUMP ===");
+
+        this->enable();
+
+        // Read frequency registers
+        uint8_t msb = this->read_register_raw_(REG_FRFMSB);
+        uint8_t mid = this->read_register_raw_(REG_FRFMID);
+        uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
+
+        ESP_LOGD(TAG, "FRF registers: MSB=0x%02X, MID=0x%02X, LSB=0x%02X", msb, mid, lsb);
+
+        uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
+        ESP_LOGD(TAG, "FRF combined: 0x%06X (%u decimal)", frf, frf);
+
+        // Calculate frequency
+        uint64_t freq_hz = ((uint64_t)frf * 32000000ULL) >> 19;
+        ESP_LOGD(TAG, "Calculated frequency: %llu Hz (%.3f MHz)", freq_hz, freq_hz / 1e6);
+
+        // Read other useful registers
+        uint8_t opmode = this->read_register_raw_(REG_OPMODE);
+        ESP_LOGD(TAG, "OPMODE: 0x%02X (%s)", opmode, decode_opmode_(opmode));
+
+        uint8_t irq1 = this->read_register_raw_(REG_IRQFLAGS1);
+        ESP_LOGD(TAG, "IRQ1: 0x%02X - %s", irq1, decode_irqflags1_(irq1).c_str());
+
+        this->disable();
+
+        ESP_LOGD(TAG, "=== END DEBUG DUMP ===");
+
+        last_debug_dump = now;
+      }
     }
 
     void RFM69x::dump_config()
