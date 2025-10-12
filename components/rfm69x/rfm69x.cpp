@@ -516,7 +516,8 @@ namespace esphome
 
       // Get frequency
       uint32_t freq = this->get_frequency_actual_unsafe_();
-      status.frequency_mhz = (freq) / 1e6;
+      double fstep = 32000000.0 / 524288.0; // 61.03515625 Hz
+      status.frequency_mhz = (freq * fstep) / 1e6f;
 
       // Get RSSI
       uint8_t rssi_raw = this->read_register_raw_(REG_RSSIVALUE);
@@ -643,21 +644,15 @@ namespace esphome
       }
     }
 
-uint32_t RFM69x::get_frequency_actual_unsafe_()
-{
-    uint8_t msb = this->read_register_raw_(REG_FRFMSB);
-    uint8_t mid = this->read_register_raw_(REG_FRFMID);
-    uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
+    uint32_t RFM69x::get_frequency_actual_unsafe_()
+    {
+      uint8_t msb = this->read_register_raw_(REG_FRFMSB);
+      uint8_t mid = this->read_register_raw_(REG_FRFMID);
+      uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
 
-    uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
-
-    // Step size = F_XOSC / 2^19 where F_XOSC = 32 MHz
-    // Frequency = FRF * F_STEP
-    // Use 64-bit arithmetic to prevent overflow
-    uint64_t freq_hz = ((uint64_t)frf * 32000000ULL) / 524288ULL;
-
-    return (uint32_t)freq_hz;
-}
+      uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
+      return frf;
+    }
 
     uint8_t RFM69x::read_register_raw_(uint8_t addr)
     {
