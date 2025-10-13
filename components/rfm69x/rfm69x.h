@@ -99,7 +99,7 @@ namespace esphome
       // unsafe methods that do not check PLL lock and will be encapsulated in safe methods
       void set_frequency_unsafe_(uint32_t freq); // set frequency in MHz, e.g. 868000000
       void set_frequency_deviation_unsafe_(uint32_t frequency_deviation);
-      void set_opmode_unsafe_(uint8_t mode); // set the operation mode
+      void set_opmode_(uint8_t mode); // set the operation mode
       void set_promiscuous_mode_(bool promiscuous);
 
       // Set and get methods for the module configuration

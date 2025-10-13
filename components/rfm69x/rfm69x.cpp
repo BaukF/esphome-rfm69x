@@ -95,9 +95,9 @@ namespace esphome
 
         // Test PLL lock explicitly
         ESP_LOGW(TAG, "Testing PLL lock in FS mode...");
-        this->enable();
-        set_opmode_unsafe_(OPMODE_FS);
-        this->disable();
+
+        set_opmode_(OPMODE_FS);
+
         delay(20);
 
         bool locked = wait_for_pll_lock_(100);
@@ -111,9 +111,8 @@ namespace esphome
         }
 
         // Return to standby
-        this->enable();
-        set_opmode_unsafe_(OPMODE_STANDBY);
-        this->disable();
+
+        set_opmode_(OPMODE_STANDBY);
 
         ESP_LOGW(TAG, "========================================");
         ESP_LOGW(TAG, "=== 60 SECOND RESET TEST COMPLETE ===");
@@ -301,9 +300,7 @@ namespace esphome
       uint32_t frf = (uint32_t)(freq / FSTEP);
 
       // Step 1: Enter Standby to safely change frequency
-      this->enable();
-      set_opmode_unsafe_(OPMODE_STANDBY);
-      this->disable();
+      set_opmode_(OPMODE_STANDBY);
 
       delay(5); // Wait for mode transition
 
@@ -315,9 +312,7 @@ namespace esphome
       this->disable();
 
       // Step 3: Enter FS (Frequency Synthesis) mode to enable PLL
-      this->enable();
-      set_opmode_unsafe_(OPMODE_FS);
-      this->disable();
+      set_opmode_(OPMODE_FS);
 
       delay(10); // Give PLL time to start
 
@@ -334,13 +329,12 @@ namespace esphome
       }
 
       // Step 5: Return to Standby
-      this->enable();
-      set_opmode_unsafe_(OPMODE_STANDBY);
-      this->disable();
+      set_opmode_(OPMODE_STANDBY);
     }
 
     void RFM69x::set_frequency_deviation(uint32_t frequency_deviation)
     {
+      this->set_opmode_(OPMODE_STANDBY);
       this->enable();
       this->set_frequency_deviation_unsafe_(frequency_deviation);
       this->disable();
@@ -354,7 +348,6 @@ namespace esphome
       uint16_t fdev_reg = ((uint64_t)frequency_deviation << 19) / 32000000;
 
       // Datasheet: frequency deviation registers must be written in Standby
-      this->set_opmode_unsafe_(OPMODE_STANDBY); // Standby mode (NOT SURE IF NEEDED and needs return to previous mode?)
       write_register_raw_(REG_FDEVMSB, (fdev_reg >> 8) & 0xFF);
       write_register_raw_(REG_FDEVLSB, fdev_reg & 0xFF);
       delay(1); // Small delay to ensure registers are set
@@ -373,9 +366,7 @@ namespace esphome
     void RFM69x::set_mode_rx()
     {
       // Transaction 1: Set to standby
-      this->enable();
-      set_opmode_unsafe_(OPMODE_STANDBY);
-      this->disable();
+      set_opmode_(OPMODE_STANDBY);
 
       // Wait until really in standby (max a few ms)
       uint32_t start = millis();
@@ -392,9 +383,7 @@ namespace esphome
       delay(10); // Can't hold CS during delay
 
       // Transaction 2: Set to RX
-      this->enable();
-      set_opmode_unsafe_(OPMODE_RX);
-      this->disable();
+      set_opmode_(OPMODE_RX);
 
       // Transaction 3+: PLL check
       bool pll_locked = wait_for_pll_lock_(pll_timeout_ms_);
@@ -413,16 +402,13 @@ namespace esphome
     void RFM69x::set_mode_tx()
     {
       // Transaction 1: Set to standby
-      this->enable();
-      set_opmode_unsafe_(OPMODE_STANDBY);
-      this->disable();
+      set_opmode_(OPMODE_STANDBY);
 
-      delay(10); // Can't hold CS during delay!
+      delay(5); // Can't hold CS during delay!
 
       // Transaction 2: Set to RX
-      this->enable();
-      set_opmode_unsafe_(OPMODE_TX);
-      this->disable();
+      set_opmode_(OPMODE_TX);
+      delay(5);
 
       // Transaction 3+: PLL check (multiple reads over time)
       bool pll_locked = wait_for_pll_lock_(pll_timeout_ms_);
@@ -439,17 +425,15 @@ namespace esphome
 
     void RFM69x::set_mode_standby()
     {
-      this->enable();
-      this->set_opmode_unsafe_(OPMODE_STANDBY);
-      this->disable();
+      this->set_opmode_(OPMODE_STANDBY);
+      delay(5);
       ESP_LOGD(TAG, "Set mode to STANDBY");
     }
 
     void RFM69x::set_mode_sleep()
     {
-      this->enable();
-      this->set_opmode_unsafe_(OPMODE_SLEEP);
-      this->disable();
+      this->set_opmode_(OPMODE_SLEEP);
+      delay(5);
       ESP_LOGD(TAG, "Set mode to SLEEP");
     }
 
@@ -660,18 +644,21 @@ namespace esphome
 
     // This method assumes you have already enabled the radio (chip select low)
     // It sets the OPMODE register directly
-    void RFM69x::set_opmode_unsafe_(uint8_t mode)
+    void RFM69x::set_opmode_(uint8_t mode)
     {
-      uint8_t opmode = read_register_raw_(REG_OPMODE);
+      // Read current mode (with proper CS toggling)
+      uint8_t opmode = this->read_register_(REG_OPMODE);
 
-      // CRITICAL: Disable the sequencer AND set new mode
-      // Sequencer OFF = bit 7 set to 1
+      // Disable sequencer AND set new mode
       opmode = OPMODE_SEQUENCER_OFF | mode;
 
-      write_register_raw_(REG_OPMODE, opmode);
-      delay(1);
+      // Write with proper CS toggling
+      this->write_register_(REG_OPMODE, opmode);
+      delay(5); // Give it time to switch modes
 
-      uint8_t readback = read_register_raw_(REG_OPMODE);
+      // Verify with proper CS toggling
+      uint8_t readback = this->read_register_(REG_OPMODE);
+
       if (readback != opmode)
       {
         ESP_LOGE(TAG, "Mode write failed! Tried 0x%02X, read 0x%02X (wanted: %s, got: %s)",
@@ -909,9 +896,8 @@ namespace esphome
       ESP_LOGW(TAG, "=== Testing PLL Lock ===");
 
       // Enter FS mode to activate PLL
-      this->enable();
-      set_opmode_unsafe_(OPMODE_FS);
-      this->disable();
+
+      set_opmode_(OPMODE_FS);
 
       delay(20); // Give it time
 
@@ -934,9 +920,7 @@ namespace esphome
       }
 
       // Return to standby
-      this->enable();
-      set_opmode_unsafe_(OPMODE_STANDBY);
-      this->disable();
+      set_opmode_(OPMODE_STANDBY);
 
       return locked;
     }
