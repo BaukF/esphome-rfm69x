@@ -636,25 +636,32 @@ namespace esphome
     // It sets the OPMODE register directly
     void RFM69x::set_opmode_(uint8_t mode)
     {
-      // Read current mode (with proper CS toggling)
+      // Read current mode
       uint8_t opmode = this->read_register_(REG_OPMODE);
 
-      // Disable sequencer AND set new mode
+      // Set sequencer off + new mode
       opmode = OPMODE_SEQUENCER_OFF | mode;
 
-      // Write with proper CS toggling
+      // Write new mode
       this->write_register_(REG_OPMODE, opmode);
-      delay(5); // Give it time to switch modes
 
-      // Verify with proper CS toggling
+      // WAIT for ModeReady flag
+      uint32_t start = millis();
+      while (millis() - start < 100)
+      {
+        uint8_t irq1 = this->read_register_(REG_IRQFLAGS1);
+        if (irq1 & IRQ1_MODEREADY)
+        {
+          break;
+        }
+        delay(1);
+      }
+
+      // Verify
       uint8_t readback = this->read_register_(REG_OPMODE);
-
       if (readback != opmode)
       {
-        ESP_LOGE(TAG, "Mode write failed! Tried 0x%02X, read 0x%02X (wanted: %s, got: %s)",
-                 opmode, readback,
-                 decode_opmode_(opmode),
-                 decode_opmode_(readback));
+        ESP_LOGE(TAG, "Mode write failed! Tried 0x%02X, read 0x%02X", opmode, readback);
       }
     }
 
