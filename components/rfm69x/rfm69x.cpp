@@ -299,10 +299,9 @@ namespace esphome
       constexpr double FSTEP = 32000000.0 / 524288.0;
       uint32_t frf = (uint32_t)(freq / FSTEP);
 
-      // Step 1: Enter Standby to safely change frequency
+      // Step 1: Enter Standby
       set_opmode_(OPMODE_STANDBY);
-
-      delay(5); // Wait for mode transition
+      delay(10); // Increased from 5
 
       // Step 2: Write frequency registers
       this->enable();
@@ -311,12 +310,11 @@ namespace esphome
       write_register_raw_(REG_FRFLSB, (uint8_t)(frf));
       this->disable();
 
-      // Step 3: Enter FS (Frequency Synthesis) mode to enable PLL
+      // Step 3: Enter FS mode
       set_opmode_(OPMODE_FS);
+      delay(15); // Increased from 10 - give PLL more time
 
-      delay(10); // Give PLL time to start
-
-      // Step 4: NOW check PLL lock
+      // Step 4: Check PLL lock
       bool plllock = wait_for_pll_lock_(pll_timeout_ms_);
 
       if (!plllock)
@@ -330,14 +328,6 @@ namespace esphome
 
       // Step 5: Return to Standby
       set_opmode_(OPMODE_STANDBY);
-    }
-
-    void RFM69x::set_frequency_deviation(uint32_t frequency_deviation)
-    {
-      this->set_opmode_(OPMODE_STANDBY);
-      this->enable();
-      this->set_frequency_deviation_unsafe_(frequency_deviation);
-      this->disable();
     }
 
     // to write fequency deviation, we need to write to 2 registers and that
