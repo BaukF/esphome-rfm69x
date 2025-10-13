@@ -74,6 +74,9 @@ namespace esphome
         ESP_LOGW(TAG, "=== 60 SECOND RESET TEST STARTING ===");
         ESP_LOGW(TAG, "========================================");
 
+        this->test_spi_communication();
+        ESP_LOGW(TAG, "");
+
         // Reset the radio
         ESP_LOGW(TAG, "Calling reset_rfm69x()...");
         this->reset_rfm69x();
@@ -661,9 +664,9 @@ namespace esphome
     {
       uint8_t opmode = read_register_raw_(REG_OPMODE);
 
-      // Preserve only the Sequencer bit, set new mode
-      // Mode values (OPMODE_SLEEP, OPMODE_RX, etc.) are already shifted
-      opmode = (opmode & OPMODE_SEQUENCER_OFF) | mode;
+      // CRITICAL: Disable the sequencer AND set new mode
+      // Sequencer OFF = bit 7 set to 1
+      opmode = OPMODE_SEQUENCER_OFF | mode;
 
       write_register_raw_(REG_OPMODE, opmode);
       delay(1);
@@ -671,8 +674,10 @@ namespace esphome
       uint8_t readback = read_register_raw_(REG_OPMODE);
       if (readback != opmode)
       {
-        ESP_LOGE(TAG, "Mode write failed! Tried 0x%02X, read 0x%02X",
-                 opmode, readback);
+        ESP_LOGE(TAG, "Mode write failed! Tried 0x%02X, read 0x%02X (wanted: %s, got: %s)",
+                 opmode, readback,
+                 decode_opmode_(opmode),
+                 decode_opmode_(readback));
       }
     }
 
@@ -729,16 +734,27 @@ namespace esphome
 
     void RFM69x::reset_rfm69x()
     {
-      if (this->reset_pin_ != 0)
+      if (this->reset_pin_ != nullptr)
       {
-        this->reset_pin_->digital_write(false);
-        delay(2);
-        this->reset_pin_->digital_write(true);
-        delay(5); // wait 5 ms to stabilize
+        ESP_LOGD(TAG, "Hardware reset via reset pin...");
+        this->reset_pin_->digital_write(true); // Active high reset
+        delay(10);
+        this->reset_pin_->digital_write(false); // Release reset
+        delay(10);                              // Wait for chip to stabilize
+
+        // Verify chip is responding
+        uint8_t version = this->read_register_(REG_VERSION);
+        ESP_LOGD(TAG, "Version after reset: 0x%02X", version);
       }
       else
       {
-        ESP_LOGW(TAG, "Reset pin not defined, No reset RFM69x at initialization");
+        ESP_LOGW(TAG, "Reset pin not defined, performing soft reset via register");
+
+        // Software reset: write to REG_OPMODE with sequencer off, sleep mode
+        this->write_register_(REG_OPMODE, OPMODE_SEQUENCER_OFF | OPMODE_SLEEP);
+        delay(10);
+        this->write_register_(REG_OPMODE, OPMODE_SEQUENCER_OFF | OPMODE_STANDBY);
+        delay(10);
       }
     }
 
@@ -923,6 +939,46 @@ namespace esphome
       this->disable();
 
       return locked;
+    }
+
+    // Add to rfm69x.cpp
+    void RFM69x::test_spi_communication()
+    {
+      ESP_LOGW(TAG, "=== Testing Basic SPI Communication ===");
+
+      // Test 1: Read VERSION (read-only register, should always be 0x24)
+      uint8_t version = this->read_register_(REG_VERSION);
+      ESP_LOGW(TAG, "VERSION register: 0x%02X (expected 0x24)", version);
+
+      // Test 2: Read OPMODE current state
+      uint8_t opmode_before = this->read_register_(REG_OPMODE);
+      ESP_LOGW(TAG, "OPMODE before: 0x%02X (%s)", opmode_before, decode_opmode_(opmode_before));
+
+      // Test 3: Try to write a different mode
+      ESP_LOGW(TAG, "Attempting to write SLEEP mode (0x80)...");
+      this->write_register_(REG_OPMODE, 0x80); // Sequencer OFF + Sleep
+      delay(10);
+
+      uint8_t opmode_after = this->read_register_(REG_OPMODE);
+      ESP_LOGW(TAG, "OPMODE after: 0x%02X (%s)", opmode_after, decode_opmode_(opmode_after));
+
+      if (opmode_after == 0x80)
+      {
+        ESP_LOGW(TAG, "✓ SPI write successful!");
+      }
+      else
+      {
+        ESP_LOGE(TAG, "✗ SPI write FAILED - register didn't change");
+      }
+
+      // Test 4: Try writing to a safe test register (SYNCVALUE1)
+      ESP_LOGW(TAG, "Testing SYNCVALUE1 register...");
+      this->write_register_(REG_SYNCVALUE1, 0xAA);
+      delay(1);
+      uint8_t sync_test = this->read_register_(REG_SYNCVALUE1);
+      ESP_LOGW(TAG, "Wrote 0xAA, read back 0x%02X", sync_test);
+
+      ESP_LOGW(TAG, "=== SPI Communication Test Complete ===");
     }
 
   } // namespace rfm69x

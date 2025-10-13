@@ -123,6 +123,7 @@ namespace esphome
       std::string decode_irqflags1_(uint8_t val);
       std::string decode_irqflags2_(uint8_t val);
       bool test_pll_lock();
+      void test_spi_communication();
     };
 
   } // namespace rfm69x
