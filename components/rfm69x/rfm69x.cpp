@@ -239,16 +239,30 @@ namespace esphome
       constexpr double FSTEP = 32000000.0 / 524288.0;
       uint32_t frf = (uint32_t)(freq / FSTEP);
 
-      // ONE enable/disable for the entire frequency setting operation
+      // Step 1: Enter Standby to safely change frequency
       this->enable();
       set_opmode_unsafe_(OPMODE_STANDBY);
+      this->disable();
+
+      delay(5); // Wait for mode transition
+
+      // Step 2: Write frequency registers
+      this->enable();
       write_register_raw_(REG_FRFMSB, (uint8_t)(frf >> 16));
       write_register_raw_(REG_FRFMID, (uint8_t)(frf >> 8));
       write_register_raw_(REG_FRFLSB, (uint8_t)(frf));
       this->disable();
 
-      // PLL check must be separate (needs polling over time)
+      // Step 3: Enter FS (Frequency Synthesis) mode to enable PLL
+      this->enable();
+      set_opmode_unsafe_(OPMODE_FS);
+      this->disable();
+
+      delay(10); // Give PLL time to start
+
+      // Step 4: NOW check PLL lock
       bool plllock = wait_for_pll_lock_(pll_timeout_ms_);
+
       if (!plllock)
       {
         ESP_LOGE(TAG, "PLL failed to lock after frequency set");
@@ -257,6 +271,11 @@ namespace esphome
       {
         ESP_LOGI(TAG, "Successfully set frequency to %.3f MHz", freq / 1e6);
       }
+
+      // Step 5: Return to Standby
+      this->enable();
+      set_opmode_unsafe_(OPMODE_STANDBY);
+      this->disable();
     }
 
     void RFM69x::set_frequency_deviation(uint32_t frequency_deviation)
