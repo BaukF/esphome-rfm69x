@@ -60,10 +60,65 @@ namespace esphome
 
     void RFM69x::loop()
     {
-      // Static variable persists between loop() calls
+      // Static variables persist between loop() calls
       static uint32_t last_debug_dump = 0;
+      static bool reset_done = false;
 
       uint32_t now = millis();
+
+      // One-time reset after 60 seconds
+      if (!reset_done && now > 60000)
+      {
+        ESP_LOGW(TAG, "");
+        ESP_LOGW(TAG, "========================================");
+        ESP_LOGW(TAG, "=== 60 SECOND RESET TEST STARTING ===");
+        ESP_LOGW(TAG, "========================================");
+
+        // Reset the radio
+        ESP_LOGW(TAG, "Calling reset_rfm69x()...");
+        this->reset_rfm69x();
+        ESP_LOGW(TAG, "Reset complete");
+
+        delay(100); // Let it settle
+
+        // Read version again
+        uint8_t version = this->read_register_(REG_VERSION);
+        ESP_LOGW(TAG, "Version after reset: 0x%02X", version);
+
+        // Reconfigure
+        ESP_LOGW(TAG, "Calling configure_rfm69x()...");
+        this->configure_rfm69x();
+        ESP_LOGW(TAG, "Reconfiguration complete");
+
+        // Test PLL lock explicitly
+        ESP_LOGW(TAG, "Testing PLL lock in FS mode...");
+        this->enable();
+        set_opmode_unsafe_(OPMODE_FS);
+        this->disable();
+        delay(20);
+
+        bool locked = wait_for_pll_lock_(100);
+        if (locked)
+        {
+          ESP_LOGW(TAG, "✓✓✓ PLL LOCKED! ✓✓✓");
+        }
+        else
+        {
+          ESP_LOGE(TAG, "✗✗✗ PLL NOT LOCKED ✗✗✗");
+        }
+
+        // Return to standby
+        this->enable();
+        set_opmode_unsafe_(OPMODE_STANDBY);
+        this->disable();
+
+        ESP_LOGW(TAG, "========================================");
+        ESP_LOGW(TAG, "=== 60 SECOND RESET TEST COMPLETE ===");
+        ESP_LOGW(TAG, "========================================");
+        ESP_LOGW(TAG, "");
+
+        reset_done = true;
+      }
     }
 
     void RFM69x::dump_config()
