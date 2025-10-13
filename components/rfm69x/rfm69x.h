@@ -118,6 +118,7 @@ namespace esphome
       bool wait_for_pll_lock_(uint32_t timeout_ms = 100);
 
       // helpful methods
+      bool is_in_standby_();
       const char *decode_opmode_(uint8_t opmode);
       std::string decode_irqflags1_(uint8_t val);
       std::string decode_irqflags2_(uint8_t val);

@@ -283,6 +283,13 @@ namespace esphome
                frequency_deviation / 1000.0, fdev_reg);
     }
 
+    bool RFM69x::is_in_standby_()
+    {
+      uint8_t opmode = this->read_register_raw_(REG_OPMODE);
+      uint8_t mode_bits = (opmode >> 2) & 0x07;
+      return (mode_bits == 0b001);
+    }
+
     void RFM69x::set_mode_rx()
     {
       // Transaction 1: Set to standby
@@ -291,14 +298,9 @@ namespace esphome
       this->disable();
 
       // Wait until really in standby (max a few ms)
-      bool is_in_standby = false;
       uint32_t start = millis();
-      while (!is_in_standby)
+      while (!is_in_standby_())
       {
-        uint8_t opmode = this->read_register_raw_(REG_OPMODE);
-        uint8_t mode_bits = (opmode >> 2) & 0x07;
-        is_in_standby = mode_bits == 0b001;
-        delay(2);
         if (millis() - start > 100)
         {
           ESP_LOGW(TAG, "Timeout waiting for Standby mode");
@@ -306,14 +308,15 @@ namespace esphome
         }
         delay(1);
       }
-      delay(10); // Can't hold CS during delay!
+
+      delay(10); // Can't hold CS during delay
 
       // Transaction 2: Set to RX
       this->enable();
       set_opmode_unsafe_(OPMODE_RX);
       this->disable();
 
-      // Transaction 3+: PLL check (multiple reads over time)
+      // Transaction 3+: PLL check
       bool pll_locked = wait_for_pll_lock_(pll_timeout_ms_);
 
       if (pll_locked)
