@@ -32,8 +32,8 @@ namespace esphome
     // start default methods for esphome component
     void RFM69x::setup()
     {
-      ESP_LOGD(TAG, "=== setup() START ===");
-      ESP_LOGD(TAG, "Initializing RFM69x...");
+      ESP_LOGW(TAG, "=== setup() START ===");
+      ESP_LOGW(TAG, "Initializing RFM69x...");
 
       this->spi_setup();
       this->reset_rfm69x();
@@ -43,15 +43,18 @@ namespace esphome
       if (this->version_ == 0x24 || this->version_ == 0x22)
       {
         this->detected_ = true;
-        ESP_LOGI(TAG, "Detected RFM69, version=0x%02X", this->version_);
-        ESP_LOGD(TAG, "About to call configure_rfm69x()");
+        ESP_LOGW(TAG, "Detected RFM69, version=0x%02X", this->version_);
+        ESP_LOGW(TAG, "About to call configure_rfm69x()");
         this->configure_rfm69x();
         delay(10); // wait a bit as this is first setup
+
+        // TEST: Check if PLL can lock
+        this->test_pll_lock();
       }
       else
       {
         this->detected_ = false;
-        ESP_LOGE(TAG, "RFM69 not detected (last read=0x%02X)", this->version_);
+        ESP_LOGW(TAG, "RFM69 not detected (last read=0x%02X)", this->version_);
       }
     }
 
@@ -643,21 +646,30 @@ namespace esphome
     // start helper methods for rfm69x
     void RFM69x::configure_rfm69x()
     {
+      ESP_LOGW(TAG, ">>> configure_rfm69x() START");
+
       // Always set frequency (even if using default)
+      ESP_LOGW(TAG, "About to set frequency to %.3f MHz", this->frequency_ / 1e6);
       set_frequency(this->frequency_);
+      ESP_LOGW(TAG, "Frequency setting completed");
 
       // Set default modulation
+      ESP_LOGW(TAG, "Setting modulation...");
       set_modulation(RFM69_FSK, RFM69_PACKET_MODE, RFM69_SHAPING_NONE);
 
       // Set default bitrate
-      set_bitrate(4800); // Default bitrate
+      ESP_LOGW(TAG, "Setting bitrate...");
+      set_bitrate(4800);
 
       // Set default power
-      set_power_level(0); // by default no power
+      ESP_LOGW(TAG, "Setting power...");
+      set_power_level(0);
 
       // Configure promiscuous mode if enabled
+      ESP_LOGW(TAG, "Setting promiscuous mode...");
       set_promiscuous_mode(this->promiscuous_mode_);
-      // other configuration can be added here
+
+      ESP_LOGW(TAG, "<<< configure_rfm69x() END");
     }
 
     void RFM69x::reset_rfm69x()
@@ -818,6 +830,44 @@ namespace esphome
         }
       }
       return res.empty() ? "None" : res;
+    }
+
+    // Add to rfm69x.cpp
+    bool RFM69x::test_pll_lock()
+    {
+      ESP_LOGW(TAG, "=== Testing PLL Lock ===");
+
+      // Enter FS mode to activate PLL
+      this->enable();
+      set_opmode_unsafe_(OPMODE_FS);
+      this->disable();
+
+      delay(20); // Give it time
+
+      // Check lock
+      bool locked = wait_for_pll_lock_(100);
+
+      if (locked)
+      {
+        ESP_LOGW(TAG, "✓ PLL LOCKED in FS mode!");
+      }
+      else
+      {
+        ESP_LOGE(TAG, "✗ PLL NOT LOCKED after 100ms");
+
+        // Debug: read IRQ flags directly
+        this->enable();
+        uint8_t irq1 = read_register_raw_(REG_IRQFLAGS1);
+        this->disable();
+        ESP_LOGE(TAG, "IRQ1 flags: 0x%02X (%s)", irq1, decode_irqflags1_(irq1).c_str());
+      }
+
+      // Return to standby
+      this->enable();
+      set_opmode_unsafe_(OPMODE_STANDBY);
+      this->disable();
+
+      return locked;
     }
 
   } // namespace rfm69x

@@ -122,6 +122,7 @@ namespace esphome
       const char *decode_opmode_(uint8_t opmode);
       std::string decode_irqflags1_(uint8_t val);
       std::string decode_irqflags2_(uint8_t val);
+      bool test_pll_lock();
     };
 
   } // namespace rfm69x
