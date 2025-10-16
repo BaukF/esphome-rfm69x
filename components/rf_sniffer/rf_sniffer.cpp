@@ -80,24 +80,90 @@ namespace esphome
       if (this->radio_ == nullptr)
         return;
 
-      else
-      {
-        //
-        static uint32_t last_check = 0;
-        if (millis() - last_check > 30000)
-        {
-          uint8_t rssi = this->radio_->get_rssi();
-          uint8_t irq2 = this->radio_->get_irq_flags2();
+      uint32_t now = millis();
+      static uint32_t last_rssi_check = 0;
+      static uint32_t last_packet_check = 0;
+      static uint32_t last_irq_dump = 0;
+      static bool last_packet_detected = false;
 
-          ESP_LOGD("RfSniffer", "RSSI: -%d dBm, IRQ2: 0x%02X", rssi / 2, irq2);
-          last_check = millis();
+      // ============================================================
+      // RSSI Check - Every 2 seconds (slower, just for reference)
+      // ============================================================
+      if (now - last_rssi_check > 2000)
+      {
+        uint8_t rssi = this->radio_->get_rssi();
+        ESP_LOGD("RfSniffer", "RSSI: -%d dBm", rssi / 2);
+        last_rssi_check = now;
+      }
+
+      // ============================================================
+      // Detailed IRQ Flags Dump - Every 500ms (diagnostic)
+      // ============================================================
+      if (now - last_irq_dump > 500)
+      {
+        uint8_t irq1 = this->radio_->get_irq_flags1();
+        uint8_t irq2 = this->radio_->get_irq_flags2();
+
+        // Decode what flags are set
+        std::string irq2_status;
+        if (irq2 & 0x80)
+          irq2_status += "FifoFull ";
+        if (irq2 & 0x40)
+          irq2_status += "FifoNotEmpty ";
+        if (irq2 & 0x20)
+          irq2_status += "FifoLevel ";
+        if (irq2 & 0x10)
+          irq2_status += "FifoOverrun ";
+        if (irq2 & 0x08)
+          irq2_status += "PacketSent ";
+        if (irq2 & 0x04)
+          irq2_status += "PayloadReady ";
+        if (irq2 & 0x02)
+          irq2_status += "CRC_OK ";
+        if (irq2 & 0x01)
+          irq2_status += "LowBat ";
+
+        if (irq2_status.empty())
+          irq2_status = "None";
+
+        ESP_LOGD("RfSniffer", "IRQ1: 0x%02X | IRQ2: 0x%02X [%s]", irq1, irq2, irq2_status.c_str());
+
+        // Special warnings for issues
+        if (irq2 & 0x10)
+        {
+          ESP_LOGW("RfSniffer", "⚠️  FIFO OVERRUN - data was lost!");
         }
 
-        if (this->radio_->packet_available())
+        last_irq_dump = now;
+      }
+
+      // ============================================================
+      // Packet Check - Every 100ms (responsive)
+      // ============================================================
+      if (now - last_packet_check > 100)
+      {
+        bool packet_available = this->radio_->packet_available();
+
+        // Only log when state CHANGES (packet arrives or timeout)
+        if (packet_available && !last_packet_detected)
         {
           ESP_LOGW("RfSniffer", "*** PACKET DETECTED! ***");
-          // TODO: Read and display packet data
+          last_packet_detected = true;
+
+          // TODO: Read packet here
+          // std::vector<uint8_t> packet = this->radio_->read_packet();
+          // ESP_LOGW("RfSniffer", "Packet length: %d", packet.size());
+          // for (size_t i = 0; i < packet.size(); i++) {
+          //   ESP_LOGW("RfSniffer", "  [%d]: 0x%02X", i, packet[i]);
+          // }
         }
+        else if (!packet_available && last_packet_detected)
+        {
+          ESP_LOGI("RfSniffer", "Packet read (FIFO cleared)");
+          last_packet_detected = false;
+        }
+
+        last_packet_check = now;
       }
     }
 
