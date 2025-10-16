@@ -273,14 +273,20 @@ namespace esphome
     // to write fequency deviation, we need to write to 2 registers and that
     // may take some time.
     // and enable/disable will be done here too. So raw access to SPI
-    void RFM69x::set_frequency_deviation_unsafe_(uint32_t frequency_deviation)
+
+    void RFM69x::set_frequency_deviation(uint32_t frequency_deviation)
     {
+      set_opmode_(OPMODE_STANDBY);
+      delay(10);
+
       uint16_t fdev_reg = ((uint64_t)frequency_deviation << 19) / 32000000;
 
-      // Datasheet: frequency deviation registers must be written in Standby
+      this->enable();
       write_register_raw_(REG_FDEVMSB, (fdev_reg >> 8) & 0xFF);
       write_register_raw_(REG_FDEVLSB, fdev_reg & 0xFF);
-      delay(1); // Small delay to ensure registers are set
+      this->disable();
+
+      delay(1);
 
       ESP_LOGD(TAG, "Set frequency deviation: %.2f kHz [FDEV=0x%04X]",
                frequency_deviation / 1000.0, fdev_reg);
@@ -682,20 +688,6 @@ namespace esphome
         this->write_register_(REG_OPMODE, OPMODE_SEQUENCER_OFF | OPMODE_STANDBY);
         delay(10);
       }
-    }
-
-    // to do, do we want to disable/enable here?
-    uint32_t RFM69x::get_frequency_actual_unsafe_()
-    {
-      uint8_t msb = this->read_register_raw_(REG_FRFMSB);
-      uint8_t mid = this->read_register_raw_(REG_FRFMID);
-      uint8_t lsb = this->read_register_raw_(REG_FRFLSB);
-
-      ESP_LOGD(TAG, "get_frequency_actual_unsafe_: MSB=0x%02X MID=0x%02X LSB=0x%02X",
-               msb, mid, lsb);
-
-      uint32_t frf = ((uint32_t)msb << 16) | ((uint32_t)mid << 8) | lsb;
-      return frf;
     }
 
     uint8_t RFM69x::read_register_(uint8_t addr)

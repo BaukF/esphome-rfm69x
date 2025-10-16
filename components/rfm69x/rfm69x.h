@@ -116,7 +116,7 @@ namespace esphome
       void reset_rfm69x();     // reset the module via reset pin if defined
 
       uint32_t get_frequency_() const { return this->frequency_; }
-      uint32_t get_frequency_actual_unsafe_(); // get actual frequency based on FRF registers
+      uint32_t get_frequency_actual(); // get actual frequency based on FRF registers
       bool get_promiscuous_mode_() const { return this->promiscuous_mode_; }
 
       // Low-level register access
