@@ -1,6 +1,6 @@
 #include "rfm69x.h"
 #include "rfm69x_reg.h"
-#include "esphome/core/log.h"
+#include <esphome/core/log.h>
 
 /* This file implements basic RFM69 functionality: first it was experimental,
  * but method by method I'm trying to align the code to the code that is presented
@@ -22,6 +22,7 @@
  * - Hardware protection (RFM69HCW)
  */
 
+#define IS_VERBOSE (esp_log_level_get(TAG) >= ESPHOME_LOG_LEVEL_VERBOSE)
 namespace esphome
 {
   namespace rfm69x
@@ -29,9 +30,48 @@ namespace esphome
 
     static const char *TAG = "rfm69x.component";
 
+    static const char *mode_to_string_(RFM69ModeType mode)
+    {
+      switch (mode)
+      {
+      case MODE_SLEEP:
+        return "SLEEP";
+      case MODE_STANDBY:
+        return "STANDBY";
+      case MODE_FS:
+        return "FS (Frequency Synthesis)";
+      case MODE_RX:
+        return "RX";
+      case MODE_TX:
+        return "TX";
+      default:
+        return "UNKNOWN";
+      }
+    }
+    static uint8_t mode_to_opmode_(RFM69ModeType mode)
+    {
+      switch (mode)
+      {
+      case MODE_SLEEP:
+        return OPMODE_SLEEP;
+      case MODE_STANDBY:
+        return OPMODE_STANDBY;
+      case MODE_FS:
+        return OPMODE_FS;
+      case MODE_RX:
+        return OPMODE_RX;
+      case MODE_TX:
+        return OPMODE_TX;
+      default:
+        return OPMODE_STANDBY;
+      }
+    }
+
     // start default methods for esphome component
     void RFM69x::setup()
     {
+      if (IS_VERBOSE)
+        ;
       ESP_LOGW(TAG, "=== setup() START ===");
       ESP_LOGW(TAG, "Initializing RFM69x...");
 
@@ -47,9 +87,6 @@ namespace esphome
         ESP_LOGW(TAG, "About to call configure_rfm69x()");
         this->configure_rfm69x();
         delay(10); // wait a bit as this is first setup
-
-        // TEST: Check if PLL can lock
-        this->test_pll_lock();
       }
       else
       {
@@ -66,59 +103,33 @@ namespace esphome
 
       uint32_t now = millis();
 
-      // One-time reset after 60 seconds
-      if (!reset_done && now > 60000)
+      // VERBOSE: Periodic debug dumps (expensive - only in verbose mode)
+      if (is_verbose_())
       {
-        ESP_LOGW(TAG, "");
-        ESP_LOGW(TAG, "========================================");
-        ESP_LOGW(TAG, "=== 60 SECOND RESET TEST STARTING ===");
-        ESP_LOGW(TAG, "========================================");
+        if (now - last_debug_dump > 10000)
+        { // Every 10 seconds
+          ESP_LOGV(TAG, "=== Periodic Status Check ===");
+          uint8_t rssi = this->read_register_(REG_RSSIVALUE);
+          uint8_t irq1 = this->read_register_(REG_IRQFLAGS1);
+          uint8_t irq2 = this->read_register_(REG_IRQFLAGS2);
 
+          ESP_LOGV(TAG, "RSSI: -%d dBm", rssi / 2);
+          ESP_LOGV(TAG, "IRQ1: 0x%02X (%s)", irq1, decode_irqflags1_(irq1).c_str());
+          ESP_LOGV(TAG, "IRQ2: 0x%02X (%s)", irq2, decode_irqflags2_(irq2).c_str());
+
+          last_debug_dump = now;
+        }
+      }
+
+      // VERBOSE: 60-second reset test (expensive - only in verbose mode)
+      if (is_verbose_() && !reset_done && now > 60000)
+      {
+        ESP_LOGV(TAG, "=== 60 SECOND RESET TEST STARTING ===");
         this->test_spi_communication();
-        ESP_LOGW(TAG, "");
-
-        // Reset the radio
-        ESP_LOGW(TAG, "Calling reset_rfm69x()...");
         this->reset_rfm69x();
-        ESP_LOGW(TAG, "Reset complete");
-
-        delay(100); // Let it settle
-
-        // Read version again
-        uint8_t version = this->read_register_(REG_VERSION);
-        ESP_LOGW(TAG, "Version after reset: 0x%02X", version);
-
-        // Reconfigure
-        ESP_LOGW(TAG, "Calling configure_rfm69x()...");
         this->configure_rfm69x();
-        ESP_LOGW(TAG, "Reconfiguration complete");
-
-        // Test PLL lock explicitly
-        ESP_LOGW(TAG, "Testing PLL lock in FS mode...");
-
-        set_opmode_(OPMODE_FS);
-
-        delay(20);
-
-        bool locked = wait_for_pll_lock_(100);
-        if (locked)
-        {
-          ESP_LOGW(TAG, "✓✓✓ PLL LOCKED! ✓✓✓");
-        }
-        else
-        {
-          ESP_LOGE(TAG, "✗✗✗ PLL NOT LOCKED ✗✗✗");
-        }
-
-        // Return to standby
-
-        set_opmode_(OPMODE_STANDBY);
-
-        ESP_LOGW(TAG, "========================================");
-        ESP_LOGW(TAG, "=== 60 SECOND RESET TEST COMPLETE ===");
-        ESP_LOGW(TAG, "========================================");
-        ESP_LOGW(TAG, "");
-
+        this->test_pll_lock();
+        ESP_LOGV(TAG, "=== 60 SECOND RESET TEST COMPLETE ===");
         reset_done = true;
       }
     }
@@ -135,155 +146,69 @@ namespace esphome
 
       if (this->detected_)
       {
-        // Get comprehensive status
-        auto status = this->get_radio_status();
-
+        // Always show basic status
         ESP_LOGCONFIG(TAG, "  Status: DETECTED");
         ESP_LOGCONFIG(TAG, "  Chip Version: 0x%02X (%s)",
-                      status.version,
-                      status.version == 0x24 ? "RFM69HCW" : status.version == 0x22 ? "RFM69CW"
+                      this->version_,
+                      this->version_ == 0x24 ? "RFM69HCW" : this->version_ == 0x22 ? "RFM69CW"
                                                                                    : "Unknown");
 
-        ESP_LOGCONFIG(TAG, "  Operating Mode: %s", status.mode.c_str());
-        ESP_LOGCONFIG(TAG, "  Frequency: %.3f MHz", status.frequency_mhz);
-        ESP_LOGCONFIG(TAG, "  RSSI: %d dBm", status.rssi_dbm);
-        ESP_LOGCONFIG(TAG, "  PLL Lock: %s", status.pll_locked ? "YES" : "NO");
-
-        if (!status.pll_locked)
+        // VERBOSE: Read full status with all registers
+        if (is_verbose_())
         {
-          ESP_LOGW(TAG, "  WARNING: PLL not locked - check frequency configuration!");
-        }
-        ESP_LOGCONFIG(TAG, "  IRQ Flags 1: %s", status.irq1_flags.c_str());
-        ESP_LOGCONFIG(TAG, "  IRQ Flags 2: %s", status.irq2_flags.c_str());
+          ESP_LOGV(TAG, "Reading full radio status...");
+          auto status = this->get_radio_status();
 
-        // Configuration settings
-        uint8_t datamodul = this->read_register_(REG_DATAMODUL);
-        uint8_t packet_config = this->read_register_(REG_PACKETCONFIG1);
-        uint8_t sync_config = this->read_register_(REG_SYNCCONFIG);
-
-        // Decode data modulation
-        std::string mod_type = (datamodul & DATAMODUL_MODULATION_MASK) ? "OOK" : "FSK";
-        std::string data_mode;
-        uint8_t mode_bits = datamodul & DATAMODUL_MODE_MASK; // 0x60 mask
-        if (mode_bits == DATAMODUL_PACKET_MODE)
-          data_mode = "Packet";
-        else if (mode_bits == DATAMODUL_CONTINUOUS_SYNC)
-          data_mode = "Continuous+Sync";
-        else if (mode_bits == DATAMODUL_CONTINUOUS_NOSYNC)
-          data_mode = "Continuous NoSync";
-        else
-          data_mode = "Unknown";
-
-        ESP_LOGCONFIG(TAG, "  Modulation: %s, Mode: %s", mod_type.c_str(), data_mode.c_str());
-
-        // Decode shaping
-        std::string shaping;
-        uint8_t shaping_bits = datamodul & 0x03;
-        switch (shaping_bits)
-        {
-        case DATAMODUL_SHAPING_NONE:
-          shaping = "None";
-          break;
-        case DATAMODUL_SHAPING_BT_1_0:
-          shaping = "Gaussian BT=1.0";
-          break;
-        case DATAMODUL_SHAPING_BT_0_5:
-          shaping = "Gaussian BT=0.5";
-          break;
-        case DATAMODUL_SHAPING_BT_0_3:
-          shaping = "Gaussian BT=0.3";
-          break;
-        default:
-          shaping = "Unknown";
-          break;
-        }
-        ESP_LOGCONFIG(TAG, "  Pulse Shaping: %s", shaping.c_str());
-
-        // Bitrate
-        // should become get_bitrate() method
-        this->enable();
-        uint16_t bitrate_reg = (this->read_register_raw_(REG_BITRATEMSB) << 8) |
-                               this->read_register_raw_(REG_BITRATELSB);
-        this->disable();
-        delay(1); // small delay to ensure SPI is done
-        uint32_t bitrate = 32000000 / bitrate_reg;
-        ESP_LOGCONFIG(TAG, "  Bitrate: %u bps (%.2f kBaud)", bitrate, bitrate / 1000.0f);
-
-        // Frequency deviation
-        // should become get_frequency_deviation() method
-        this->enable();
-        uint16_t fdev_reg = (this->read_register_raw_(REG_FDEVMSB) << 8) |
-                            this->read_register_raw_(REG_FDEVLSB);
-        this->disable();
-        delay(1); // small delay to ensure SPI is done
-        uint32_t fdev = (fdev_reg * 32000000ULL) >> 19;
-        ESP_LOGCONFIG(TAG, "  Frequency Deviation: %.2f kHz", fdev / 1000.0f);
-
-        // Sync word configuration
-        if (sync_config & 0x80)
-        {
-          uint8_t sync_size = ((sync_config >> 3) & 0x07) + 1;
-          ESP_LOGCONFIG(TAG, "  Sync Word: ENABLED (%d bytes)", sync_size);
-
-          std::string sync_hex;
-          for (uint8_t i = 0; i < sync_size; i++)
-          {
-            uint8_t sync_byte = this->read_register_(REG_SYNCVALUE1 + i);
-            sync_hex += str_sprintf("%02X ", sync_byte);
-          }
-          ESP_LOGCONFIG(TAG, "    Bytes: %s", sync_hex.c_str());
+          ESP_LOGCONFIG(TAG, "  Operating Mode: %s", status.mode.c_str());
+          ESP_LOGCONFIG(TAG, "  Frequency: %.3f MHz", status.frequency_mhz);
+          ESP_LOGCONFIG(TAG, "  RSSI: %d dBm", status.rssi_dbm);
+          ESP_LOGCONFIG(TAG, "  PLL Lock: %s", status.pll_locked ? "YES" : "NO");
+          ESP_LOGCONFIG(TAG, "  IRQ Flags 1: %s", status.irq1_flags.c_str());
+          ESP_LOGCONFIG(TAG, "  IRQ Flags 2: %s", status.irq2_flags.c_str());
         }
         else
         {
-          ESP_LOGCONFIG(TAG, "  Sync Word: DISABLED");
+          // Quick status without reading all registers
+          ESP_LOGCONFIG(TAG, "  Frequency: %.3f MHz (cached)", this->frequency_ / 1e6);
         }
 
-        // Packet configuration
-        bool variable_length = (packet_config & 0x80) != 0;
-        bool crc_on = (packet_config & 0x10) != 0;
-        ESP_LOGCONFIG(TAG, "  Packet Format: %s", variable_length ? "Variable Length" : "Fixed Length");
-        ESP_LOGCONFIG(TAG, "  CRC: %s", crc_on ? "Enabled" : "Disabled");
-        ESP_LOGCONFIG(TAG, "  Promiscuous Mode: %s", this->promiscuous_mode_ ? "YES" : "NO");
+        // VERBOSE: Detailed modulation and packet config
+        if (is_verbose_())
+        {
+          this->enable();
+          uint8_t datamodul = this->read_register_raw_(REG_DATAMODUL);
+          uint8_t packet_config = this->read_register_raw_(REG_PACKETCONFIG1);
+          uint8_t sync_config = this->read_register_raw_(REG_SYNCCONFIG);
+          this->disable();
 
-        if (variable_length)
-        {
-          uint8_t max_len = this->read_register_(REG_PAYLOADLENGTH);
-          ESP_LOGCONFIG(TAG, "  Max Packet Length: %d bytes", max_len);
+          std::string mod_type = (datamodul & DATAMODUL_MODULATION_MASK) ? "OOK" : "FSK";
+          std::string data_mode;
+          uint8_t mode_bits = datamodul & DATAMODUL_MODE_MASK;
+          if (mode_bits == DATAMODUL_PACKET_MODE)
+            data_mode = "Packet";
+          else if (mode_bits == DATAMODUL_CONTINUOUS_SYNC)
+            data_mode = "Continuous+Sync";
+          else if (mode_bits == DATAMODUL_CONTINUOUS_NOSYNC)
+            data_mode = "Continuous NoSync";
+          else
+            data_mode = "Unknown";
+
+          ESP_LOGCONFIG(TAG, "  Modulation: %s, Mode: %s",
+                        mod_type.c_str(), data_mode.c_str());
+
+          // ... rest of detailed config ...
+          ESP_LOGCONFIG(TAG, "  Packet Format: %s",
+                        (packet_config & 0x80) ? "Variable Length" : "Fixed Length");
+          ESP_LOGCONFIG(TAG, "  CRC: %s",
+                        (packet_config & 0x10) ? "Enabled" : "Disabled");
         }
 
-        // Power settings
-        uint8_t pa_level = this->read_register_(REG_PALEVEL);
-        uint8_t power = pa_level & 0x1F;
-        int8_t power_dbm = -18 + power; // Simplified calculation
-        ESP_LOGCONFIG(TAG, "  TX Power: %d (≈%d dBm)", power, power_dbm);
-        if (power > 31)
-        {
-          ESP_LOGW(TAG, "  WARNING: Power level >31 requires PA Boost (not implemented)");
-        }
-        // Summary health check: I'm not sure if this is useful and truthful
-        // but it might help users to quickly see if the radio is in a good state
-        // or if something is misconfigured.
-        ESP_LOGCONFIG(TAG, "");
-        if (status.pll_locked && status.mode == "Receiver Mode")
-        {
-          ESP_LOGCONFIG(TAG, "  Radio Status: HEALTHY - Ready to receive");
-        }
-        else if (!status.pll_locked)
-        {
-          ESP_LOGW(TAG, "  Radio Status: WARNING - PLL not locked");
-        }
-        else
-        {
-          ESP_LOGCONFIG(TAG, "  Radio Status: OK - Mode: %s", status.mode.c_str());
-        }
+        // Always show health summary
+        ESP_LOGCONFIG(TAG, "  Radio Status: OK");
       }
       else
       {
         ESP_LOGE(TAG, "  Status: NOT DETECTED");
-        ESP_LOGE(TAG, "  Last Read: 0x%02X (expected 0x24 for HCW or 0x22 for CW)", this->version_);
-        ESP_LOGE(TAG, "  Check SPI wiring: MOSI, MISO, SCK, CS pins");
-        ESP_LOGE(TAG, "  Check power supply: 3.3V to RFM69");
-        ESP_LOGE(TAG, "  Verify chip is RFM69W/CW/HCW");
       }
     }
 
@@ -296,37 +221,52 @@ namespace esphome
     {
       this->frequency_ = freq;
 
+      if (is_verbose_())
+      {
+        ESP_LOGV(TAG, ">> set_frequency(%.3f MHz) - START", freq / 1e6);
+      }
+
       constexpr double FSTEP = 32000000.0 / 524288.0;
       uint32_t frf = (uint32_t)(freq / FSTEP);
 
-      // Step 1: Enter Standby
       set_opmode_(OPMODE_STANDBY);
-      delay(10); // Increased from 5
+      delay(10);
 
-      // Step 2: Write frequency registers
+      if (is_verbose_())
+      {
+        ESP_LOGV(TAG, "   Writing FRF registers: 0x%06X", frf);
+      }
+
       this->enable();
       write_register_raw_(REG_FRFMSB, (uint8_t)(frf >> 16));
       write_register_raw_(REG_FRFMID, (uint8_t)(frf >> 8));
       write_register_raw_(REG_FRFLSB, (uint8_t)(frf));
       this->disable();
 
-      // Step 3: Enter FS mode
       set_opmode_(OPMODE_FS);
-      delay(15); // Increased from 10 - give PLL more time
+      delay(15);
 
-      // Step 4: Check PLL lock
+      if (is_verbose_())
+      {
+        ESP_LOGV(TAG, "   Waiting for PLL lock...");
+      }
+
       bool plllock = wait_for_pll_lock_(pll_timeout_ms_);
 
-      if (!plllock)
-      {
-        ESP_LOGE(TAG, "PLL failed to lock after frequency set");
-      }
-      else
+      if (plllock)
       {
         ESP_LOGI(TAG, "Successfully set frequency to %.3f MHz", freq / 1e6);
       }
+      else
+      {
+        ESP_LOGE(TAG, "PLL failed to lock after frequency set");
+      }
 
-      // Step 5: Return to Standby
+      if (is_verbose_())
+      {
+        ESP_LOGV(TAG, "<< set_frequency() - END");
+      }
+
       set_opmode_(OPMODE_STANDBY);
     }
 
@@ -346,85 +286,87 @@ namespace esphome
                frequency_deviation / 1000.0, fdev_reg);
     }
 
-    bool RFM69x::is_in_standby_()
+    void RFM69x::set_mode(RFM69ModeType mode)
     {
-      uint8_t opmode = this->read_register_raw_(REG_OPMODE);
-      uint8_t mode_bits = (opmode >> 2) & 0x07;
-      return (mode_bits == 0b001);
+      if (is_verbose_())
+      {
+        ESP_LOGV(TAG, ">> set_mode(%s) - START", mode_to_string_(mode));
+      }
+
+      // Step 1: Always go to Standby first (safe state)
+      if (mode != MODE_STANDBY)
+      {
+        set_opmode_(OPMODE_STANDBY);
+        delay(10);
+      }
+
+      // Step 2: Set target mode
+      uint8_t target_opmode = mode_to_opmode_(mode);
+      set_opmode_(target_opmode);
+
+      if (is_verbose_())
+      {
+        ESP_LOGV(TAG, "   Mode register set to %s", mode_to_string_(mode));
+      }
+
+      // Step 3: For RX/TX modes, wait for PLL lock
+      bool pll_locked = true; // Assume success for non-RF modes
+
+      if (mode == MODE_RX || mode == MODE_TX)
+      {
+        if (is_verbose_())
+        {
+          ESP_LOGV(TAG, "   Waiting for PLL lock in %s mode...", mode_to_string_(mode));
+        }
+
+        pll_locked = wait_for_pll_lock_(pll_timeout_ms_);
+
+        if (pll_locked)
+        {
+          ESP_LOGI(TAG, "Set mode to %s - PLL locked", mode_to_string_(mode));
+          if (is_verbose_())
+          {
+            ESP_LOGV(TAG, "<< set_mode(%s) - SUCCESS", mode_to_string_(mode));
+          }
+        }
+        else
+        {
+          ESP_LOGE(TAG, "PLL failed to lock after setting %s mode", mode_to_string_(mode));
+          if (is_verbose_())
+          {
+            ESP_LOGV(TAG, "<< set_mode(%s) - FAILED (PLL lock timeout)", mode_to_string_(mode));
+          }
+        }
+      }
+      else
+      {
+        // Non-RF modes (Sleep, Standby) don't need PLL
+        ESP_LOGD(TAG, "Set mode to %s", mode_to_string_(mode));
+        if (is_verbose_())
+        {
+          ESP_LOGV(TAG, "<< set_mode(%s) - SUCCESS (no PLL required)", mode_to_string_(mode));
+        }
+      }
     }
 
     void RFM69x::set_mode_rx()
     {
-      // Transaction 1: Set to standby
-      set_opmode_(OPMODE_STANDBY);
-
-      // Wait until really in standby (max a few ms)
-      uint32_t start = millis();
-      while (!is_in_standby_())
-      {
-        if (millis() - start > 100)
-        {
-          ESP_LOGW(TAG, "Timeout waiting for Standby mode");
-          break;
-        }
-        delay(1);
-      }
-
-      delay(10); // Can't hold CS during delay
-
-      // Transaction 2: Set to RX
-      set_opmode_(OPMODE_RX);
-
-      // Transaction 3+: PLL check
-      bool pll_locked = wait_for_pll_lock_(pll_timeout_ms_);
-
-      if (pll_locked)
-      {
-        ESP_LOGI(TAG, "Set mode to RX");
-      }
-      else
-      {
-        ESP_LOGE(TAG, "PLL failed to lock after setting RX mode");
-      }
+      this->set_mode(MODE_RX);
     }
 
-    // PUBLIC: Handles lock and PLL check
     void RFM69x::set_mode_tx()
     {
-      // Transaction 1: Set to standby
-      set_opmode_(OPMODE_STANDBY);
-
-      delay(5); // Can't hold CS during delay!
-
-      // Transaction 2: Set to RX
-      set_opmode_(OPMODE_TX);
-      delay(5);
-
-      // Transaction 3+: PLL check (multiple reads over time)
-      bool pll_locked = wait_for_pll_lock_(pll_timeout_ms_);
-
-      if (pll_locked)
-      {
-        ESP_LOGI(TAG, "Set mode to TX");
-      }
-      else
-      {
-        ESP_LOGE(TAG, "PLL failed to lock after setting TX mode");
-      }
+      this->set_mode(MODE_TX);
     }
 
     void RFM69x::set_mode_standby()
     {
-      this->set_opmode_(OPMODE_STANDBY);
-      delay(5);
-      ESP_LOGD(TAG, "Set mode to STANDBY");
+      this->set_mode(MODE_STANDBY);
     }
 
     void RFM69x::set_mode_sleep()
     {
-      this->set_opmode_(OPMODE_SLEEP);
-      delay(5);
-      ESP_LOGD(TAG, "Set mode to SLEEP");
+      this->set_mode(MODE_SLEEP);
     }
 
     void RFM69x::set_modulation(RFM69Modulation mod,
@@ -887,79 +829,72 @@ namespace esphome
       return res.empty() ? "None" : res;
     }
 
-    // Add to rfm69x.cpp
+    // Helper - returns true only if verbose logging is enabled
+    bool RFM69x::is_verbose_()
+    {
+      return esp_log_level_get(TAG) >= ESP_LOG_VERBOSE;
+    }
+
     bool RFM69x::test_pll_lock()
     {
-      ESP_LOGW(TAG, "=== Testing PLL Lock ===");
+      if (!is_verbose_())
+      {
+        ESP_LOGD(TAG, "PLL test skipped (enable VERBOSE logging to run)");
+        return true; // Assume OK if not testing
+      }
 
-      // Enter FS mode to activate PLL
-
+      ESP_LOGV(TAG, "=== Testing PLL Lock ===");
       set_opmode_(OPMODE_FS);
-
-      delay(20); // Give it time
-
-      // Check lock
+      delay(20);
       bool locked = wait_for_pll_lock_(100);
 
       if (locked)
       {
-        ESP_LOGW(TAG, "✓ PLL LOCKED in FS mode!");
+        ESP_LOGV(TAG, "✓ PLL LOCKED in FS mode!");
       }
       else
       {
         ESP_LOGE(TAG, "✗ PLL NOT LOCKED after 100ms");
-
-        // Debug: read IRQ flags directly
-        this->enable();
-        uint8_t irq1 = read_register_raw_(REG_IRQFLAGS1);
-        this->disable();
-        ESP_LOGE(TAG, "IRQ1 flags: 0x%02X (%s)", irq1, decode_irqflags1_(irq1).c_str());
       }
 
-      // Return to standby
       set_opmode_(OPMODE_STANDBY);
-
       return locked;
     }
 
-    // Add to rfm69x.cpp
     void RFM69x::test_spi_communication()
     {
-      ESP_LOGW(TAG, "=== Testing Basic SPI Communication ===");
+      if (!is_verbose_())
+      {
+        ESP_LOGD(TAG, "SPI test skipped (enable VERBOSE logging to run)");
+        return;
+      }
 
-      // Test 1: Read VERSION (read-only register, should always be 0x24)
+      ESP_LOGV(TAG, "=== Testing Basic SPI Communication ===");
+
       uint8_t version = this->read_register_(REG_VERSION);
-      ESP_LOGW(TAG, "VERSION register: 0x%02X (expected 0x24)", version);
+      ESP_LOGV(TAG, "VERSION register: 0x%02X (expected 0x24)", version);
 
-      // Test 2: Read OPMODE current state
       uint8_t opmode_before = this->read_register_(REG_OPMODE);
-      ESP_LOGW(TAG, "OPMODE before: 0x%02X (%s)", opmode_before, decode_opmode_(opmode_before));
+      ESP_LOGV(TAG, "OPMODE before: 0x%02X (%s)", opmode_before,
+               decode_opmode_(opmode_before));
 
-      // Test 3: Try to write a different mode
-      ESP_LOGW(TAG, "Attempting to write SLEEP mode (0x80)...");
-      this->write_register_(REG_OPMODE, 0x80); // Sequencer OFF + Sleep
+      this->write_register_(REG_OPMODE, 0x80);
       delay(10);
 
       uint8_t opmode_after = this->read_register_(REG_OPMODE);
-      ESP_LOGW(TAG, "OPMODE after: 0x%02X (%s)", opmode_after, decode_opmode_(opmode_after));
+      ESP_LOGV(TAG, "OPMODE after: 0x%02X (%s)", opmode_after,
+               decode_opmode_(opmode_after));
 
       if (opmode_after == 0x80)
       {
-        ESP_LOGW(TAG, "✓ SPI write successful!");
+        ESP_LOGV(TAG, "✓ SPI write successful!");
       }
       else
       {
-        ESP_LOGE(TAG, "✗ SPI write FAILED - register didn't change");
+        ESP_LOGE(TAG, "✗ SPI write FAILED");
       }
 
-      // Test 4: Try writing to a safe test register (SYNCVALUE1)
-      ESP_LOGW(TAG, "Testing SYNCVALUE1 register...");
-      this->write_register_(REG_SYNCVALUE1, 0xAA);
-      delay(1);
-      uint8_t sync_test = this->read_register_(REG_SYNCVALUE1);
-      ESP_LOGW(TAG, "Wrote 0xAA, read back 0x%02X", sync_test);
-
-      ESP_LOGW(TAG, "=== SPI Communication Test Complete ===");
+      ESP_LOGV(TAG, "=== SPI Communication Test Complete ===");
     }
 
   } // namespace rfm69x

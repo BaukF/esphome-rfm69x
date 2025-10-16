@@ -30,7 +30,10 @@
           "/esphome/**",
           "/root/.platformio/lib/",
           "/root/.platformio/lib/**",
-          "/pioenvs/**"
+          "/pioenvs/**",
+          "/root/.platformio/packages/framework-espidf/components/esp_common/include",
+          "/root/.platformio/packages/framework-espidf/components/log/include",
+          "/root/.platformio/packages/framework-espidf/tools/esp_rom_elfs"
         ],
         "C_Cpp.errorSquiggles": "enabled"
       }

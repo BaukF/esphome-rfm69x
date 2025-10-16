@@ -9,6 +9,14 @@ namespace esphome
   namespace rfm69x
   {
     // Add these BEFORE your class definition
+    enum RFM69ModeType
+    {
+      MODE_SLEEP,
+      MODE_STANDBY,
+      MODE_FS,
+      MODE_RX,
+      MODE_TX
+    };
     enum RFM69Modulation
     {
       RFM69_FSK,
@@ -61,6 +69,7 @@ namespace esphome
       // safe setters that need PLL checks
       void set_frequency(uint32_t freq); // set frequency in MHz, e.g. 868000000
       void set_frequency_deviation(uint32_t frequency_deviation);
+      void set_mode(RFM69ModeType mode);
       void set_mode_rx();
       void set_mode_tx();
       void set_mode_standby();
@@ -118,7 +127,7 @@ namespace esphome
       bool wait_for_pll_lock_(uint32_t timeout_ms = 100);
 
       // helpful methods
-      bool is_in_standby_();
+      bool is_verbose_();
       const char *decode_opmode_(uint8_t opmode);
       std::string decode_irqflags1_(uint8_t val);
       std::string decode_irqflags2_(uint8_t val);
