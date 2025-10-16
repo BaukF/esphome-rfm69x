@@ -533,6 +533,18 @@ namespace esphome
       ESP_LOGI(TAG, "Variable length mode: %s", variable ? "enabled" : "disabled");
     }
 
+    void RFM69x::enable_crc(bool enabled)
+    {
+      this->enable();
+      uint8_t config = this->read_register_raw_(REG_PACKETCONFIG1);
+      if (enabled)
+        config |= PACKET1_CRC_ON;
+      else
+        config &= ~PACKET1_CRC_ON;
+      this->write_register_raw_(REG_PACKETCONFIG1, config);
+      this->disable();
+    }
+
     // actual radio methods
     bool RFM69x::packet_available()
     {

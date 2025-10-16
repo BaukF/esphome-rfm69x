@@ -65,6 +65,8 @@ namespace esphome
         // Configure packet format
         this->radio_->set_variable_length_mode(true);
         this->radio_->set_packet_length(32); // Max length
+        this->radio_->enable_crc(false);
+        this->radio_->set_promiscuous_mode(true);
 
         this->radio_->set_mode_rx();
 

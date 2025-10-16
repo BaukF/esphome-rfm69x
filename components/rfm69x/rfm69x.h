@@ -86,6 +86,7 @@ namespace esphome
       void set_sync_word(uint8_t *sync_bytes, uint8_t length);
       void set_packet_length(uint8_t length);
       void set_variable_length_mode(bool variable);
+      void enable_crc(bool crc);
 
       // actual interaction with radio:
       bool packet_available();
