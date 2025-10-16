@@ -205,6 +205,23 @@ namespace esphome
 
         // Always show health summary
         ESP_LOGCONFIG(TAG, "  Radio Status: OK");
+
+        //---- temporary sync test
+        this->enable();
+        uint8_t sync_config = this->read_register_raw_(REG_SYNCCONFIG);
+        std::string sync_bytes_str;
+        uint8_t sync_len = ((sync_config >> 3) & 0x07) + 1;
+        for (uint8_t i = 0; i < sync_len; i++)
+        {
+          uint8_t sync_byte = this->read_register_raw_(REG_SYNCVALUE1 + i);
+          char hex[4];
+          snprintf(hex, sizeof(hex), "%02X ", sync_byte);
+          sync_bytes_str += hex;
+        }
+        this->disable();
+
+        ESP_LOGCONFIG(TAG, "  Sync Word: %d bytes [%s]", sync_len, sync_bytes_str.c_str());
+        //-----
       }
       else
       {
@@ -468,7 +485,6 @@ namespace esphome
       uint8_t sync_config = 0x80;
       sync_config |= ((sync_word.size() - 1) << 3);
 
-      // ONE transaction for config + all sync bytes
       this->enable();
       this->write_register_raw_(REG_SYNCCONFIG, sync_config);
       for (size_t i = 0; i < sync_word.size(); i++)
