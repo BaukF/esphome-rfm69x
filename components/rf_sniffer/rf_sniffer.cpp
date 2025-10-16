@@ -46,7 +46,7 @@ namespace esphome
         */
 
         // later: initialize sniffer mode in radio
-        this->radio_->set_promiscuous_mode(true);
+        // this->radio_->set_promiscuous_mode(true);
         // this->radio_->set_frequency(868326447); // Ducomented by Arne, will not work for mine
         this->radio_->set_frequency(868400000); // My DucoBox is at 868.400 MHz
         this->radio_->set_modulation(rfm69x::RFM69_FSK,
@@ -73,71 +73,11 @@ namespace esphome
       }
     }
 
-    void RfSniffer::scan_frequencies()
-    {
-      const uint32_t START_FREQ = 868000000;
-      const uint32_t END_FREQ = 869000000;
-      const uint32_t STEP = 100000;
-
-      static uint32_t last_step_time = 0;
-      static uint32_t settle_start_time = 0;
-      static uint32_t current_freq = START_FREQ;
-      static enum { SCAN_SET_FREQ,
-                    SCAN_SETTLE,
-                    SCAN_READ } state = SCAN_SET_FREQ;
-
-      const uint32_t now = millis();
-
-      switch (state)
-      {
-      case SCAN_SET_FREQ:
-        this->radio_->set_frequency(current_freq);
-        this->radio_->set_mode_rx();
-        settle_start_time = now;
-        state = SCAN_SETTLE;
-        break;
-
-      case SCAN_SETTLE:
-        if (now - settle_start_time >= 50)
-        {
-          state = SCAN_READ;
-        }
-        break;
-
-      case SCAN_READ:
-      {
-        uint8_t rssi = this->radio_->get_rssi();
-        int16_t rssi_dbm = -(rssi / 2);
-        if (rssi_dbm > -100)
-          ESP_LOGI(TAG, "*** ACTIVITY at %.3f MHz: RSSI = %d dBm ***", current_freq / 1e6, rssi_dbm);
-
-        current_freq += STEP;
-        if (current_freq > END_FREQ)
-        {
-          current_freq = START_FREQ;
-          ESP_LOGI(TAG, "--- Scan cycle complete ---");
-        }
-
-        last_step_time = now;
-        state = SCAN_SET_FREQ;
-      }
-      break;
-      }
-
-      // Limit frequency stepping to every 200 ms
-      if (now - last_step_time < 200)
-        return;
-    }
-
     void RfSniffer::loop()
     {
       if (this->radio_ == nullptr)
         return;
 
-      if (false && this->scanning_mode_)
-      {
-        scan_frequencies();
-      }
       else
       {
         //
@@ -161,17 +101,17 @@ namespace esphome
 
     void RfSniffer::dump_config()
     {
-      ESP_LOGCONFIG(TAG, "RF Sniffer:");
+      (TAG, "RF Sniffer:");
 
       if (this->radio_ != nullptr)
       {
-        ESP_LOGCONFIG(TAG, "  Radio Component: Connected");
+        ESP_LOGD(TAG, "  Radio Component: Connected");
         // TODO: ESP_LOGCONFIG(TAG, "  Status Update Interval: %u ms", this->status_update_interval_);
-        ESP_LOGCONFIG(TAG, "  Scanning Mode: %s", this->scanning_mode_ ? "YES" : "NO");
+        ESP_LOGD(TAG, "  Scanning Mode: %s", this->scanning_mode_ ? "YES" : "NO");
 
         // Let the radio dump its own detailed config
-        ESP_LOGCONFIG(TAG, "");
-        ESP_LOGCONFIG(TAG, "Radio Configuration:");
+        ESP_LOGD(TAG, "");
+        ESP_LOGD(TAG, "Radio Configuration:");
         this->radio_->dump_config();
       }
       else

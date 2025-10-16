@@ -61,6 +61,6 @@ rfm69x:
   cs_pin: GPIO5
   reset_pin: GPIO16 # RST pin connected to GPIO16 (RX2) on ESP32 DevKitV1
 
-#rf_sniffer:
-#  id: sniffer_component
-#  radio_id: rfm69x_component
+rf_sniffer:
+  id: sniffer_component
+  radio_id: rfm69x_component

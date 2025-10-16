@@ -24,7 +24,6 @@ namespace esphome
             void setup() override;
             void loop() override;
             void dump_config() override;
-            void scan_frequencies();
             void set_radio(rfm69x::RFM69x *radio);
 
         private:
