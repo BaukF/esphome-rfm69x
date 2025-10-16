@@ -89,9 +89,9 @@ namespace esphome
 
       // actual interaction with radio:
       bool packet_available();
-      uint8_t get_rssi() { return read_register_raw_(REG_RSSIVALUE); }
-      uint8_t get_irq_flags1() { return read_register_raw_(REG_IRQFLAGS1); }
-      uint8_t get_irq_flags2() { return read_register_raw_(REG_IRQFLAGS2); }
+      uint8_t get_rssi() { return read_register_(REG_RSSIVALUE); }
+      uint8_t get_irq_flags1() { return read_register_(REG_IRQFLAGS1); }
+      uint8_t get_irq_flags2() { return read_register_(REG_IRQFLAGS2); }
       RadioStatus get_radio_status();
       std::vector<uint8_t> read_packet();
 
