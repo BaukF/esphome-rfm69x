@@ -103,9 +103,11 @@ namespace esphome
       // Lock SPI to read IRQ registers safely and to perform any eventual FIFO read
       esphome::LockGuard lock(this->spi_mutex_);
 
+      this->enable();
       // Read IRQ registers (raw reads because we're within the lock)
       uint8_t irq1 = this->read_register_raw_(REG_IRQFLAGS1);
       uint8_t irq2 = this->read_register_raw_(REG_IRQFLAGS2);
+      this->disable();
       ESP_LOGD(TAG, "handle_isr_deferred: IRQ1=0x%02X IRQ2=0x%02X", irq1, irq2);
 
       if (irq2 & IRQ2_PAYLOAD_READY)
@@ -543,6 +545,15 @@ namespace esphome
       ESP_LOGD(TAG, "Set PA level: %u", val);
     }
 
+    void RFM69x::set_promiscuous_mode(bool promiscuous)
+    {
+      this->promiscuous_mode_ = promiscuous;
+      if (this->detected_)
+      {
+        this->set_promiscuous_mode_(promiscuous);
+      }
+    }
+
     void RFM69x::set_rx_bandwidth(uint32_t bandwidth)
     {
       // RX BW register calculation for RFM69
@@ -778,10 +789,7 @@ namespace esphome
     // needs rework to use the same method as rest of this code.
     void RFM69x::set_promiscuous_mode_(bool promiscuous)
     {
-
-      this->promiscuous_mode_ = promiscuous;
-
-      uint8_t val = this->read_register_raw_(REG_PACKETCONFIG1);
+      uint8_t val = this->read_register_(REG_PACKETCONFIG1);
       if (promiscuous)
       {
         val |= 0x04; // Set bit 2
@@ -792,9 +800,7 @@ namespace esphome
         val &= ~0x04; // Clear bit 2
         ESP_LOGD(TAG, "Promiscuous mode disabled");
       }
-      this->enable();
-      this->write_register_raw_(REG_PACKETCONFIG1, val);
-      this->disable();
+      this->write_register_(REG_PACKETCONFIG1, val);
     }
 
     // --------------------------------------------------------------------
