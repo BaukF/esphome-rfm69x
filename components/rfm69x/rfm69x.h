@@ -15,7 +15,6 @@ namespace esphome
 {
   namespace rfm69x
   {
-    // Add these BEFORE your class definition
     enum RFM69ModeType
     {
       MODE_SLEEP,
