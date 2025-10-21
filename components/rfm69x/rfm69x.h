@@ -1,7 +1,14 @@
 #pragma once
 
+#include <atomic>
+#include <functional>
+#include <string>
+#include <vector>
+
 #include <esphome/core/component.h>
 #include <esphome/components/spi/spi.h>
+#include <esphome/core/helpers.h>
+
 #include "rfm69x_reg.h"
 
 namespace esphome
@@ -45,10 +52,6 @@ namespace esphome
                                          spi::DATA_RATE_8MHZ>
     {
     public:
-      // Enable/disable raw register values in any output that has raw codes (also see __init__.py)
-      void set_raw_codes(bool raw) { this->raw_codes_ = raw; }
-      void set_reset_pin(InternalGPIOPin *reset_pin) { this->reset_pin_ = reset_pin; };
-      void set_pll_timeout(uint32_t timeout_ms) { this->pll_timeout_ms_ = timeout_ms; }
       struct RadioStatus
       {
         bool detected;
@@ -61,20 +64,38 @@ namespace esphome
         std::string irq2_flags;
       };
 
-      // Override methods from Component
+      // ------------------------------------------------------------------
+      // Basic configuration
+      // ------------------------------------------------------------------
+      void set_raw_codes(bool raw) { this->raw_codes_ = raw; }
+      void set_reset_pin(InternalGPIOPin *reset_pin) { this->reset_pin_ = reset_pin; };
+      void set_pll_timeout(uint32_t timeout_ms) { this->pll_timeout_ms_ = timeout_ms; }
+
+      // ------------------------------------------------------------------
+      // IRQ / event helpers
+      // ------------------------------------------------------------------
+      void set_irq_gpio(int gpio_num); // configure which GPIO the radio DIO is connected to
+      void enable_irq(bool enable);    // enable/disable irq handling in driver
+      void handle_isr_deferred();      // call this from component loop to service pending irq
+      void set_on_packet_callback(std::function<void(const std::vector<uint8_t> &)> cb);
+
+      // ------------------------------------------------------------------
+      // Component lifecycle
+      // ------------------------------------------------------------------
       void setup() override;
       void loop() override;
       void dump_config() override;
 
-      // safe setters that need PLL checks
-      void set_frequency(uint32_t freq); // set frequency in MHz, e.g. 868000000
+      // ------------------------------------------------------------------
+      // Radio configuration (public API)
+      // ------------------------------------------------------------------
+      void set_frequency(uint32_t freq); // set frequency in Hz, e.g. 868000000
       void set_frequency_deviation(uint32_t frequency_deviation);
       void set_mode(RFM69ModeType mode);
       void set_mode_rx();
       void set_mode_tx();
       void set_mode_standby();
       void set_mode_sleep();
-      // setters for other parameters
       void set_modulation(RFM69Modulation mod,
                           RFM69DataMode mode,
                           RFM69Shaping shaping);
@@ -88,7 +109,9 @@ namespace esphome
       void set_variable_length_mode(bool variable);
       void enable_crc(bool crc);
 
-      // actual interaction with radio:
+      // ------------------------------------------------------------------
+      // Packet handling (public API)
+      // ------------------------------------------------------------------
       bool packet_available();
       uint8_t get_rssi() { return read_register_(REG_RSSIVALUE); }
       uint8_t get_irq_flags1() { return read_register_(REG_IRQFLAGS1); }
@@ -96,40 +119,74 @@ namespace esphome
       RadioStatus get_radio_status();
       std::vector<uint8_t> read_packet();
 
-    protected:
-      // protected variables
-      bool detected_{false};                // whether the device was detected during setup
-      bool raw_codes_{false};               // whether to show raw register values in dump_config
-      uint32_t pll_timeout_ms_{50};         // timeout for PLL lock in ms
-      InternalGPIOPin *reset_pin_{nullptr}; // optional reset pin
-      uint8_t version_{0};                  // version read from REG_VERSION
-      uint32_t frequency_{868000000};       // default frequency 868 MHz
-      bool promiscuous_mode_{false};        // whether promiscuous mode is enabled
+      // ------------------------------------------------------------------
+      // ISR bridging helpers
+      // ------------------------------------------------------------------
+      void isr_set_packet_ready();
+      static void gpio_isr_wrapper(void *arg);
 
-      // unsafe methods that do not check PLL lock and will be encapsulated in safe methods
-      void set_opmode_(uint8_t mode); // set the operation mode
+    protected:
+      // ------------------------------------------------------------------
+      // Core driver state
+      // ------------------------------------------------------------------
+      bool detected_{false};
+      bool raw_codes_{false};
+      uint32_t pll_timeout_ms_{50};
+      InternalGPIOPin *reset_pin_{nullptr};
+      uint8_t version_{0};
+      uint32_t frequency_{868000000};
+      bool promiscuous_mode_{false};
+      esphome::Mutex spi_mutex_;
+      std::atomic<bool> packet_ready_{false};
+      std::atomic<bool> irq_enabled_{false};
+      int irq_gpio_{-1};
+      std::function<void(const std::vector<uint8_t> &)> on_packet_cb_;
+
+      // ------------------------------------------------------------------
+      // Packet handling (private helpers)
+      // ------------------------------------------------------------------
+      std::vector<uint8_t> read_packet_locked();
+
+      // ------------------------------------------------------------------
+      // Protected radio helpers
+      // ------------------------------------------------------------------
+      void set_opmode_(uint8_t mode);
       void set_promiscuous_mode_(bool promiscuous);
 
-      // Set and get methods for the module configuration
-      void configure_rfm69x(); // configure the module with current settings
-      void reset_rfm69x();     // reset the module via reset pin if defined
+      // ------------------------------------------------------------------
+      // Protected configuration helpers
+      // ------------------------------------------------------------------
+      void configure_rfm69x();
+      void reset_rfm69x();
 
+      // ------------------------------------------------------------------
+      // Internal configuration accessors
+      // ------------------------------------------------------------------
       uint32_t get_frequency_() const { return this->frequency_; }
-      uint32_t get_frequency_actual(); // get actual frequency based on FRF registers
+      uint32_t get_frequency_actual();
       bool get_promiscuous_mode_() const { return this->promiscuous_mode_; }
 
+      // ------------------------------------------------------------------
       // Low-level register access
+      // ------------------------------------------------------------------
       uint8_t read_register_(uint8_t addr);
       void write_register_(uint8_t addr, uint8_t value);
       uint8_t read_register_raw_(uint8_t addr);
       void write_register_raw_(uint8_t addr, uint8_t value);
       bool wait_for_pll_lock_(uint32_t timeout_ms = 100);
 
-      // helpful methods
-      bool is_verbose_();
+      // ------------------------------------------------------------------
+      // Decoding helpers
+      // ------------------------------------------------------------------
       const char *decode_opmode_(uint8_t opmode);
       std::string decode_irqflags1_(uint8_t val);
       std::string decode_irqflags2_(uint8_t val);
+
+      bool is_verbose_();
+
+      // ------------------------------------------------------------------
+      // Diagnostics helpers
+      // ------------------------------------------------------------------
       bool test_pll_lock();
       void test_spi_communication();
     };

@@ -47,31 +47,47 @@ namespace esphome
 
         // later: initialize sniffer mode in radio
         // this->radio_->set_promiscuous_mode(true);
-        // this->radio_->set_frequency(868326447); // Ducomented by Arne, will not work for mine
-        this->radio_->set_frequency(868400000); // My DucoBox is at 868.400 MHz
+        ESP_LOGI("RfSniffer", "Configuring radio for Duco protocol...");
+
+        // Frequency: 868.326447 MHz
+        this->radio_->set_frequency(868326447);
+
+        // Modulation: FSK, packet mode, Gaussian shaping
         this->radio_->set_modulation(rfm69x::RFM69_FSK,
                                      rfm69x::RFM69_PACKET_MODE,
                                      rfm69x::RFM69_SHAPING_GAUSSIAN_BT_0_5);
 
+        // Bitrate: 38384 bps
         this->radio_->set_bitrate(38384);
-        this->radio_->set_frequency_deviation(20630);
-        this->radio_->set_rx_bandwidth(100000);
-        this->radio_->set_power_level(0); // disable
 
-        // Configure Duco sync word
+        // Frequency deviation: 20630 Hz
+        this->radio_->set_frequency_deviation(20630);
+
+        // RX bandwidth: 101562.5 Hz (~101.5625 kHz)
+        this->radio_->set_rx_bandwidth(101562);
+
+        // Power level (receiver mode, so set to minimum)
+        this->radio_->set_power_level(0);
+
+        // Packet format: variable length
+        this->radio_->set_variable_length_mode(true);
+
+        // Max packet length: 32 bytes
+        this->radio_->set_packet_length(32);
+
+        // Enable CRC
+        this->radio_->enable_crc(true);
+
+        // No address filtering (promiscuous mode)
+        this->radio_->set_promiscuous_mode(true);
+
+        // Sync word: 0xD3 0x91
         std::vector<uint8_t> duco_sync = {0xD3, 0x91};
         this->radio_->set_sync_word(duco_sync);
 
-        // Configure packet format
-        this->radio_->set_variable_length_mode(true);
-        this->radio_->set_packet_length(32); // Max length
-        this->radio_->enable_crc(false);
-        this->radio_->set_promiscuous_mode(true);
-
+        // Enter RX mode
         this->radio_->set_mode_rx();
-
-        ESP_LOGI("RfSniffer", "Radio configured, checking mode...");
-        delay(10); // Give it a moment to switch
+        delay(50);
       }
     }
 
@@ -87,12 +103,16 @@ namespace esphome
       static bool last_packet_detected = false;
 
       // ============================================================
-      // RSSI Check - Every 2 seconds (slower, just for reference)
+      // RSSI Check - Every 500ms (diagnostic - was 2s, too slow)
       // ============================================================
-      if (now - last_rssi_check > 2000)
+      if (now - last_rssi_check > 500)
       {
         uint8_t rssi = this->radio_->get_rssi();
-        ESP_LOGD("RfSniffer", "RSSI: -%d dBm", rssi / 2);
+        uint8_t irq1 = this->radio_->get_irq_flags1();
+        uint8_t irq2 = this->radio_->get_irq_flags2();
+
+        ESP_LOGI("RfSniffer", "RSSI: -%d dBm | IRQ1: 0x%02X | IRQ2: 0x%02X",
+                 rssi / 2, irq1, irq2);
         last_rssi_check = now;
       }
 
@@ -104,7 +124,7 @@ namespace esphome
         uint8_t irq1 = this->radio_->get_irq_flags1();
         uint8_t irq2 = this->radio_->get_irq_flags2();
 
-        // Decode what flags are set
+        // Decode IRQ2 flags
         std::string irq2_status;
         if (irq2 & 0x80)
           irq2_status += "FifoFull ";
@@ -131,7 +151,7 @@ namespace esphome
         // Special warnings for issues
         if (irq2 & 0x10)
         {
-          ESP_LOGW("RfSniffer", "⚠️  FIFO OVERRUN - data was lost!");
+          ESP_LOGW("RfSniffer", "FIFO OVERRUN - data was lost!");
         }
 
         last_irq_dump = now;

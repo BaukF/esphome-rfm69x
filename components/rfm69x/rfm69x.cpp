@@ -1,6 +1,7 @@
 #include "rfm69x.h"
 #include "rfm69x_reg.h"
 #include <esphome/core/log.h>
+#include <esphome/core/helpers.h>
 
 /* This file implements basic RFM69 functionality: first it was experimental,
  * but method by method I'm trying to align the code to the code that is presented
@@ -67,12 +68,95 @@ namespace esphome
       }
     }
 
+    // --------------------------------------------------------------------
+    // IRQ management (public API)
+    // --------------------------------------------------------------------
+
+    void RFM69x::set_irq_gpio(int gpio_num)
+    {
+      this->irq_gpio_ = gpio_num;
+      ESP_LOGD(TAG, "set_irq_gpio(%d)", gpio_num);
+    }
+
+    void RFM69x::enable_irq(bool enable)
+    {
+      this->irq_enabled_.store(enable ? true : false);
+      ESP_LOGD(TAG, "enable_irq(%s)", enable ? "true" : "false");
+
+      // When enabling: clear pending flag to avoid spurious immediate reads
+      if (enable)
+      {
+        this->packet_ready_.store(false, std::memory_order_release);
+      }
+      // NOTE: actual platform-specific ISR attach/detach should be performed by
+      // platform glue (see examples below). This keeps driver portable.
+    }
+
+    void RFM69x::handle_isr_deferred()
+    {
+      // Quick exits: IRQ handling disabled or nothing pending
+      if (!this->irq_enabled_.load(std::memory_order_acquire))
+        return;
+      if (!this->packet_ready_.load(std::memory_order_acquire))
+        return;
+
+      // Lock SPI to read IRQ registers safely and to perform any eventual FIFO read
+      esphome::LockGuard lock(this->spi_mutex_);
+
+      // Read IRQ registers (raw reads because we're within the lock)
+      uint8_t irq1 = this->read_register_raw_(REG_IRQFLAGS1);
+      uint8_t irq2 = this->read_register_raw_(REG_IRQFLAGS2);
+      ESP_LOGD(TAG, "handle_isr_deferred: IRQ1=0x%02X IRQ2=0x%02X", irq1, irq2);
+
+      if (irq2 & IRQ2_PAYLOAD_READY)
+      {
+        if (this->on_packet_cb_)
+        {
+          // Driver-eager: read the packet here (we already hold the lock) and invoke callback.
+          std::vector<uint8_t> pkt = this->read_packet_locked();
+          if (!pkt.empty())
+          {
+            // Keep callback work fast; if heavier processing is needed, copy pkt and queue it.
+            this->on_packet_cb_(pkt);
+          }
+          // read_packet_locked cleared packet_ready_
+        }
+        else
+        {
+          // Leave packet_ready_ set so higher-level code will call read_packet()
+          this->packet_ready_.store(true, std::memory_order_release);
+        }
+      }
+      else
+      {
+        // other events (FIFO overrun etc.)
+        if (irq2 & IRQ2_FIFO_OVERRUN)
+        {
+          ESP_LOGW(TAG, "FIFO OVERRUN detected in deferred handler");
+        }
+        // Clear pending flag to avoid repeated wakeups
+        this->packet_ready_.store(false, std::memory_order_release);
+      }
+    }
+
+    void RFM69x::set_on_packet_callback(std::function<void(const std::vector<uint8_t> &)> cb)
+    {
+      this->on_packet_cb_ = cb;
+      ESP_LOGD(TAG, "set_on_packet_callback(%s)", this->on_packet_cb_ ? "set" : "cleared");
+    }
+
+    // --------------------------------------------------------------------
+    // Component lifecycle
+    // --------------------------------------------------------------------
+
     // start default methods for esphome component
     void RFM69x::setup()
     {
       if (IS_VERBOSE)
-        ;
-      ESP_LOGW(TAG, "=== setup() START ===");
+      {
+        ESP_LOGW(TAG, "=== setup() START ===");
+      }
+
       ESP_LOGW(TAG, "Initializing RFM69x...");
 
       this->spi_setup();
@@ -132,6 +216,10 @@ namespace esphome
         ESP_LOGV(TAG, "=== 60 SECOND RESET TEST COMPLETE ===");
         reset_done = true;
       }
+
+      // If IRQ handling is enabled and a deferred handler should run, run it here.
+      // This will decode IRQ registers and optionally call callbacks.
+      this->handle_isr_deferred();
     }
 
     void RFM69x::dump_config()
@@ -229,9 +317,10 @@ namespace esphome
       }
     }
 
-    // to write fequency, we need to write to 3 registers and that
-    // may take some time, and watch for pll lock
-    // and enable/disable will be done here too. So raw access to SPI
+    // --------------------------------------------------------------------
+    // Radio configuration (public API)
+    // --------------------------------------------------------------------
+    // Writing the frequency touches three registers and requires a PLL lock check.
     /// @brief Frequency setter with PLL lock check,
     /// @param freq e.g. 868000000, this is fixed for 868 MHz set
     void RFM69x::set_frequency(uint32_t freq)
@@ -287,9 +376,7 @@ namespace esphome
       set_opmode_(OPMODE_STANDBY);
     }
 
-    // to write fequency deviation, we need to write to 2 registers and that
-    // may take some time.
-    // and enable/disable will be done here too. So raw access to SPI
+    // Adjusting the frequency deviation touches two registers; keep SPI toggles minimal.
 
     void RFM69x::set_frequency_deviation(uint32_t frequency_deviation)
     {
@@ -467,7 +554,7 @@ namespace esphome
       //           = 32MHz / (16 * 2^4) = 32MHz / 256 = 125 kHz
 
       // For closer to 101.5625: Mant=20 (0b01), Exp=2
-      //           = 32MHz / (20 * 2^4) = 32MHz / 320 = 100 kHz 
+      //           = 32MHz / (20 * 2^4) = 32MHz / 320 = 100 kHz
 
       uint8_t reg_value = 0x42; // DccFreq=010, Mant=01 (20), Exp=010 (2)
       this->write_register_(REG_RXBW, reg_value);
@@ -545,7 +632,10 @@ namespace esphome
       this->disable();
     }
 
-    // actual radio methods
+    // --------------------------------------------------------------------
+    // Packet handling (public API)
+    // --------------------------------------------------------------------
+
     bool RFM69x::packet_available()
     {
       uint8_t irq_flags = this->read_register_(REG_IRQFLAGS2);
@@ -593,20 +683,64 @@ namespace esphome
       return status;
     }
 
-    std::vector<uint8_t> RFM69x::read_packet()
+    // --------------------------------------------------------------------
+    // Packet handling (private helpers)
+    // --------------------------------------------------------------------
+    // Low-level FIFO read variant that assumes the caller already holds spi_mutex_.
+    // This avoids nested locking with esphome::Mutex (non-recursive).
+    std::vector<uint8_t> RFM69x::read_packet_locked()
     {
       std::vector<uint8_t> packet;
 
+      // Caller must hold spi_mutex_ (assert is optional)
+      // Read payload length and payload from FIFO (chip select must be handled by helpers)
       this->enable();
       uint8_t length = this->read_register_raw_(REG_FIFO);
-      for (uint8_t i = 0; i < length; i++)
+      if (length == 0)
+      {
+        ESP_LOGW(TAG, "read_packet_locked: length==0");
+        this->disable();
+        this->packet_ready_.store(false, std::memory_order_release);
+        return packet;
+      }
+      if (length > 255)
+      {
+        ESP_LOGW(TAG, "read_packet_locked: suspicious length %u, clamping to 255", length);
+        length = 255;
+      }
+      packet.reserve(length);
+      for (uint8_t i = 0; i < length; ++i)
       {
         packet.push_back(this->read_register_raw_(REG_FIFO));
       }
+
+      uint8_t irq2 = this->read_register_raw_(REG_IRQFLAGS2);
+      if (irq2 & IRQ2_CRC_OK)
+      {
+        ESP_LOGD(TAG, "read_packet_locked: CRC OK");
+      }
+      else
+      {
+        ESP_LOGD(TAG, "read_packet_locked: CRC not OK (IRQ2=0x%02X)", irq2);
+      }
+
       this->disable();
 
+      // consumed the packet
+      this->packet_ready_.store(false, std::memory_order_release);
       return packet;
     }
+
+    // Public read_packet() keeps behaviour but uses the locked variant internally.
+    std::vector<uint8_t> RFM69x::read_packet()
+    {
+      esphome::LockGuard lock(this->spi_mutex_);
+      return this->read_packet_locked();
+    }
+
+    // --------------------------------------------------------------------
+    // Protected radio helpers
+    // --------------------------------------------------------------------
 
     // This method assumes you have already enabled the radio (chip select low)
     // It sets the OPMODE register directly
@@ -663,7 +797,10 @@ namespace esphome
       this->disable();
     }
 
-    // start helper methods for rfm69x
+    // --------------------------------------------------------------------
+    // Protected configuration helpers
+    // --------------------------------------------------------------------
+
     void RFM69x::configure_rfm69x()
     {
       ESP_LOGW(TAG, ">>> configure_rfm69x() START");
@@ -687,7 +824,7 @@ namespace esphome
 
       // Configure promiscuous mode if enabled
       ESP_LOGW(TAG, "Setting promiscuous mode...");
-      set_promiscuous_mode(this->promiscuous_mode_);
+      set_promiscuous_mode_(this->promiscuous_mode_);
 
       ESP_LOGW(TAG, "<<< configure_rfm69x() END");
     }
@@ -718,6 +855,10 @@ namespace esphome
       }
     }
 
+    // --------------------------------------------------------------------
+    // Low-level register access
+    // --------------------------------------------------------------------
+
     uint8_t RFM69x::read_register_(uint8_t addr)
     {
       this->enable();
@@ -728,7 +869,7 @@ namespace esphome
 
     uint8_t RFM69x::read_register_raw_(uint8_t addr)
     {
-      this->write_byte(addr & 0x7F); // clear MSB  read
+      this->write_byte(addr & 0x7F); // clear MSB for read
       uint8_t value = this->read_byte();
       return value;
     }
@@ -766,7 +907,9 @@ namespace esphome
       }
     }
 
-    // Start decoding methods for rfm69x
+    // --------------------------------------------------------------------
+    // Decoding helpers
+    // --------------------------------------------------------------------
     const char *RFM69x::decode_opmode_(uint8_t opmode)
     {
       // Mask the opmode to isolate the Mode bits (bits 4, 3, 2).
@@ -855,6 +998,10 @@ namespace esphome
       return esp_log_level_get(TAG) >= ESP_LOG_VERBOSE;
     }
 
+    // --------------------------------------------------------------------
+    // Diagnostics helpers
+    // --------------------------------------------------------------------
+
     bool RFM69x::test_pll_lock()
     {
       if (!is_verbose_())
@@ -915,6 +1062,31 @@ namespace esphome
       }
 
       ESP_LOGV(TAG, "=== SPI Communication Test Complete ===");
+    }
+
+    // --------------------------------------------------------------------
+    // ISR bridging helpers
+    // --------------------------------------------------------------------
+
+    void IRAM_ATTR RFM69x::isr_set_packet_ready()
+    {
+      this->packet_ready_.store(true, std::memory_order_release);
+    }
+
+    void IRAM_ATTR RFM69x::gpio_isr_wrapper(void *arg)
+    {
+      if (!arg)
+        return;
+      auto drv = reinterpret_cast<RFM69x *>(arg);
+      drv->isr_set_packet_ready();
+    }
+
+    extern "C" void IRAM_ATTR rfm69x_simple_isr(void *arg)
+    {
+      if (!arg)
+        return;
+      auto drv = reinterpret_cast<esphome::rfm69x::RFM69x *>(arg);
+      drv->isr_set_packet_ready();
     }
 
   } // namespace rfm69x
